@@ -28,13 +28,16 @@ Do not use this skill for feature implementation. Use `codexfast-development-flo
 
 Choose the version before editing release metadata:
 
-- Use a patch release, such as `0.5.4`, only for fixes to behavior that was already shipped and claimed supported:
+- Use a patch release, such as `0.9.1`, for fixes to behavior that was already shipped and claimed supported:
   - patch-signature corrections for an already supported Codex build
+  - newly discovered gates, regexes, or target specs needed to complete a feature path that was already claimed supported
+  - fixes to an already supported Fast, Speed, `/fast`, GPT-5.5, or Plugins path
   - restore, backup, integrity, re-sign, status, or packaging fixes
   - documentation corrections that do not change supported behavior
-- Use a minor release, such as `0.6.0`, for any new supported capability or compatibility surface:
+- Treat implementation-level patch targets as release mechanics, not automatic version-scope expansion. If they only make an already promised feature work correctly on an already supported build, choose patch.
+- Use a minor release, such as `0.10.0`, for any new user-visible supported capability or compatibility surface:
   - newly supported `Codex.app` version/build pairs
-  - new patch targets, feature paths, UI gates, or user-visible commands
+  - newly supported feature paths, UI surfaces, or user-visible commands that were not previously claimed supported
   - behavior that expands the supported custom-API feature set
 - If one release contains both a feature and a fix, choose the higher level: minor.
 - Even while the package is `0.x`, do not treat new compatibility support as patch-level maintenance. New Codex build support is a compatibility expansion and should be minor.
@@ -127,5 +130,6 @@ Choose the version before editing release metadata:
 - Forgetting to move `Unreleased` notes into a concrete version section.
 - Claiming publish success from `pnpm publish` start logs instead of registry confirmation.
 - Forgetting that docs and changelog are part of the release payload, not optional cleanup.
-- Treating new `Codex.app` build support, new patch targets, or new feature paths as patch releases.
+- Treating new `Codex.app` build support or new user-visible feature paths as patch releases.
+- Treating every new target spec or regex as minor even when it only fixes an already claimed supported feature.
 - Retagging or republishing an already public version to hide a previous version-selection mistake.

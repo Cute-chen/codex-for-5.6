@@ -7,6 +7,24 @@ This document describes the release flow for `codexfast`.
 - Intended code and docs changes are already complete.
 - `README.md`, `README.zh-CN.md`, `CHANGELOG.md`, and `AGENTS.md` are aligned with the shipped behavior.
 
+## Version Selection
+
+`codexfast` uses `vx.y.z` Git tags, where `v` is only the tag prefix and `x.y.z` is the npm SemVer version.
+
+- Use a patch release for fixes to behavior that was already shipped and claimed supported:
+  - patch-signature corrections for an already supported Codex build
+  - newly discovered gates, regexes, or target specs needed to complete a feature path that was already claimed supported
+  - fixes to an already supported Fast, Speed, `/fast`, GPT-5.5, or Plugins path
+  - restore, backup, integrity, re-sign, status, or packaging fixes
+  - documentation corrections that do not change supported behavior
+- Treat implementation-level patch targets as release mechanics, not automatic version-scope expansion. If they only make an already promised feature work correctly on an already supported build, choose patch.
+- Use a minor release for any new user-visible supported capability or compatibility surface:
+  - newly supported `Codex.app` version/build pairs
+  - newly supported feature paths, UI surfaces, or user-visible commands that were not previously claimed supported
+  - behavior that expands the supported custom-API feature set
+- If one release contains both a feature and a fix, choose the higher level.
+- Do not skip version numbers just to repair release confusion. Once a version is published to npm or tagged publicly, leave it immutable and choose the next correct version.
+
 ## Steps
 
 1. Check repo state.
