@@ -8,20 +8,9 @@ import { spawnSync } from "node:child_process";
 
 declare const __PATCHER_SOURCE__: string;
 declare const __PACKAGE_VERSION__: string;
+declare const __SUPPORTED_APP_VERSIONS__: Record<string, string>;
 
-const SUPPORTED_APP_VERSIONS: Record<string, string> = {
-  "26.415.40636+1799": "Codex.app 26.415.40636 build 1799",
-  "26.417.41555+1858": "Codex.app 26.417.41555 build 1858",
-  "26.422.21637+2056": "Codex.app 26.422.21637 build 2056",
-  "26.422.30944+2080": "Codex.app 26.422.30944 build 2080",
-  "26.422.62136+2176": "Codex.app 26.422.62136 build 2176",
-  "26.422.62136+2180": "Codex.app 26.422.62136 build 2180",
-  "26.422.71525+2210": "Codex.app 26.422.71525 build 2210",
-  "26.429.20946+2312": "Codex.app 26.429.20946 build 2312",
-  "26.429.30905+2345": "Codex.app 26.429.30905 build 2345",
-  "26.429.61741+2429": "Codex.app 26.429.61741 build 2429",
-};
-
+const SUPPORTED_APP_VERSIONS = __SUPPORTED_APP_VERSIONS__;
 const appBundle = process.env.CODEXFAST_APP_BUNDLE ?? "/Applications/Codex.app";
 const appResources = join(appBundle, "Contents", "Resources");
 const appInfoPlist = join(appBundle, "Contents", "Info.plist");

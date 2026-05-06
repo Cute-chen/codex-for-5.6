@@ -49,7 +49,7 @@ Check:
 
 Meaning:
 
-- The current `CFBundleShortVersionString` + `CFBundleVersion` pair is not on the strict whitelist in `src/cli.mts`.
+- The current `CFBundleShortVersionString` + `CFBundleVersion` pair is not on the strict whitelist in `src/supported-app-versions.mts`.
 - `repair --quiet` and the launchd watcher treat this as a no-op: they do not notify, unpack, back up, write `app.asar`, re-sign, or write a log file.
 
 What to do:

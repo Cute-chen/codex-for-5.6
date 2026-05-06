@@ -1,6 +1,7 @@
 import { chmodSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import ts from "typescript";
+import { SUPPORTED_APP_VERSIONS } from "../src/supported-app-versions.mts";
 
 const rootDir = resolve(new URL("..", import.meta.url).pathname);
 const sourceDir = join(rootDir, "src");
@@ -12,7 +13,16 @@ const compilerOptions = {
   module: ts.ModuleKind.CommonJS,
   target: ts.ScriptTarget.ES2022,
 };
-const patcherSource = ts.transpileModule(readFileSync(join(sourceDir, "patcher.mts"), "utf8"), {
+
+function inlineLocalModuleSource(source: string): string {
+  return source.replace(/^export /gm, "");
+}
+
+const patcherTargetsSource = inlineLocalModuleSource(readFileSync(join(sourceDir, "patcher-targets.mts"), "utf8"));
+const patcherEngineSource = readFileSync(join(sourceDir, "patcher.mts"), "utf8")
+  .replace(/^import \{[^]*?\} from "\.\/patcher-targets\.mts";\r?\n\r?\n?/, "")
+  .replace(/^(?:(?:\/\/ Build marker: stripped by scripts\/build-codexfast\.mts and re-added at the top\r?\n\/\/ of the concatenated patcher source\.\r?\n)?)"use strict";\r?\n\r?\n?/, "");
+const patcherSource = ts.transpileModule(`"use strict";\n\n${patcherTargetsSource}\n${patcherEngineSource}`, {
   compilerOptions,
 }).outputText;
 const packageVersion = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8")).version as string;
@@ -24,6 +34,14 @@ const cliSource = readFileSync(join(sourceDir, "cli.mts"), "utf8")
   .replace(
     "declare const __PACKAGE_VERSION__: string;",
     `const __PACKAGE_VERSION__ = ${JSON.stringify(packageVersion)};`,
+  )
+  .replace(
+    [
+      "declare const __SUPPORTED_APP_VERSIONS__: Record<string, string>;",
+      "",
+      "const SUPPORTED_APP_VERSIONS = __SUPPORTED_APP_VERSIONS__;",
+    ].join("\n"),
+    `const SUPPORTED_APP_VERSIONS = ${JSON.stringify(SUPPORTED_APP_VERSIONS)};`,
   );
 const transpiledCliSource = ts.transpileModule(cliSource, {
   compilerOptions,
