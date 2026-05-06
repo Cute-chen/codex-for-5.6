@@ -50,7 +50,7 @@ Check:
 Meaning:
 
 - The current `CFBundleShortVersionString` + `CFBundleVersion` pair is not on the strict whitelist in `src/cli.mts`.
-- `repair --quiet` and the launchd watcher treat this as a no-op: they log the skip and do not notify, unpack, back up, write `app.asar`, or re-sign.
+- `repair --quiet` and the launchd watcher treat this as a no-op: they do not notify, unpack, back up, write `app.asar`, re-sign, or write a log file.
 
 What to do:
 
@@ -63,7 +63,6 @@ What to do:
 Check:
 
 - The watcher is installed at `~/Library/LaunchAgents/com.codexfast.watcher.plist`
-- The watcher log at `~/Library/Logs/codexfast/watcher.log`
 - `View current status` reports the new Codex version/build as `supported`
 
 Expected behavior:

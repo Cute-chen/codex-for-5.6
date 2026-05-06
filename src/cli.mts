@@ -116,10 +116,6 @@ function codexfastSupportDir(): string {
   return join(userHomeDir(), "Library", "Application Support", "codexfast");
 }
 
-function watcherLogDir(): string {
-  return join(userHomeDir(), "Library", "Logs", "codexfast");
-}
-
 function watcherPlistPath(): string {
   return join(launchAgentsDir(), launchAgentFileName);
 }
@@ -128,18 +124,17 @@ function watcherCliPath(): string {
   return join(codexfastSupportDir(), "codexfast-watcher.js");
 }
 
-function watcherLogPath(): string {
-  return join(watcherLogDir(), "watcher.log");
-}
-
 function currentScriptPath(): string | null {
   const scriptPath = process.argv[1] ?? "";
   return scriptPath && existsSync(scriptPath) ? scriptPath : null;
 }
 
 function launchctlDomain(): string {
-  const uid = typeof process.getuid === "function" ? process.getuid() : null;
-  return uid === null ? "gui/$(id -u)" : `gui/${uid}`;
+  const getuid = process.getuid;
+  if (typeof getuid !== "function") {
+    throw new Error("Cannot resolve the launchctl GUI domain on this platform.");
+  }
+  return `gui/${getuid()}`;
 }
 
 function readBundlePlistValue(key: string, fallback = "unknown"): string {
@@ -716,10 +711,6 @@ ${environmentXml}
   <true/>
   <key>ThrottleInterval</key>
   <integer>60</integer>
-  <key>StandardOutPath</key>
-  <string>${escapeXml(watcherLogPath())}</string>
-  <key>StandardErrorPath</key>
-  <string>${escapeXml(watcherLogPath())}</string>
 </dict>
 </plist>
 `;
@@ -759,7 +750,6 @@ function installWatcher(): number {
   }
   try {
     mkdirSync(launchAgentsDir(), { recursive: true });
-    mkdirSync(watcherLogDir(), { recursive: true });
     writeFileSync(watcherPlistPath(), watcherPlist());
   } catch {
     printLine("Failed to write the launchd watcher plist.");
@@ -776,7 +766,6 @@ function installWatcher(): number {
     return 1;
   }
   printLine(`Installed watcher: ${watcherPlistPath()}`);
-  printLine(`Watcher log: ${watcherLogPath()}`);
   printLine("");
   printLine("Exit code: 0");
   return 0;
@@ -875,6 +864,8 @@ async function showMenu(): Promise<number> {
 }
 
 async function main(): Promise<number> {
+  // `--quiet` is accepted for watcher commands. Today it only suppresses future
+  // interactive surfaces; repair itself is log-only and never shows dialogs.
   const args = process.argv.slice(2).filter((arg) => arg !== "--quiet");
   const command = args[0] ?? "";
 

@@ -704,7 +704,9 @@ function main(): void {
   assertContains(watcherPlistText, "repair", "expected watcher plist to run repair", watcherPlistText);
   assertContains(watcherPlistText, "--quiet", "expected watcher plist to run repair quietly", watcherPlistText);
   assertContains(watcherPlistText, "<key>ThrottleInterval</key>", "expected watcher plist to throttle relaunches", watcherPlistText);
-  assertContains(watcherPlistText, join(watcherHome, "Library", "Logs", "codexfast", "watcher.log"), "expected watcher plist to write a log file", watcherPlistText);
+  assertNotContains(watcherPlistText, "StandardOutPath", "expected watcher plist not to write stdout to a log file", watcherPlistText);
+  assertNotContains(watcherPlistText, "StandardErrorPath", "expected watcher plist not to write stderr to a log file", watcherPlistText);
+  assertNotContains(watcherPlistText, "watcher.log", "expected watcher plist not to create a watcher log file", watcherPlistText);
   assertLaunchctlCallContains("bootstrap", watcherOutput);
 
   const inlineApp = join(tmpDir, "Supported26422Build2080InlineRestore.app");

@@ -111,7 +111,7 @@ npx codexfast install-watcher
 
 这会安装一个当前用户的 macOS `launchd` agent：`~/Library/LaunchAgents/com.codexfast.watcher.plist`。它会监听 `/Applications/Codex.app/Contents/Resources/app.asar`，当 Codex 更新替换这个归档后，自动运行本地副本里的 `codexfast repair --quiet`。
 
-watcher 只有在新安装的 version/build 已经命中严格兼容白名单时才会应用补丁。不支持的 build 会静默跳过：不会发系统通知，不会弹窗，不会创建备份，不会解包，不会写入归档，也不会重签名。跳过记录只写到 `~/Library/Logs/codexfast/watcher.log`。
+watcher 只有在新安装的 version/build 已经命中严格兼容白名单时才会应用补丁。不支持的 build 会静默跳过，并保持 app 不变。
 
 `repair` 是幂等的。如果 Codex 已经处在 patched 状态，它会报告不需要修改，并保持 `app.asar`、`Info.plist` 和应用签名不变，因此 watcher 不会因为自己的修复写入而循环触发。若 Codex 已经在运行，磁盘上的归档被修复后，需要完全退出并重新打开 Codex，前端 bundle 才会重新加载。
 

@@ -110,7 +110,7 @@ npx codexfast install-watcher
 
 This installs a per-user macOS `launchd` agent at `~/Library/LaunchAgents/com.codexfast.watcher.plist`. The agent watches `/Applications/Codex.app/Contents/Resources/app.asar` and runs a local copy of `codexfast repair --quiet` when Codex replaces the archive during an app update.
 
-The watcher only applies changes when the newly installed version/build is already in the strict compatibility whitelist. Unsupported builds are skipped quietly: no notification, no dialog, no backup, no unpack, no archive write, and no re-sign. The skip is written to the watcher log at `~/Library/Logs/codexfast/watcher.log`.
+The watcher only applies changes when the newly installed version/build is already in the strict compatibility whitelist. Unsupported builds are skipped quietly and leave the app untouched.
 
 `repair` is idempotent. If Codex is already patched, it reports that no changes were needed and leaves `app.asar`, `Info.plist`, and the app signature untouched, so the watcher does not loop on its own repair writes. If Codex is already running when the on-disk archive is repaired, fully quit and reopen Codex to load the patched frontend bundle.
 
