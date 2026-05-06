@@ -553,6 +553,28 @@ function main(): void {
     },
   });
 
+  runApplyRestoreCase({
+    name: "supported-26429-2429",
+    appDir: join(tmpDir, "Supported26429Build2429.app"),
+    assetsRoot: join(tmpDir, "supported-26429-2429-assets"),
+    appVersion: "26.429.61741",
+    appBuild: "2429",
+    assetProfile: "26429-2345",
+    applyAssert: assertApplyState26429Build2345,
+    restoreAssert: assertGuardedState26429Build2345,
+    restoreContext: "26.429 build 2429 restore",
+    postApplyAssert: (output) => assertNotContains(output, "patched: GPT-5.5", "expected 26.429 build 2429 apply to skip GPT-5.5 patch targets", output),
+    statusAssert: (output) => {
+      assertContains(output, "Current state: Composer Intelligence Speed menu enabled", "expected 26.429 build 2429 status to report the Intelligence Speed target after apply", output);
+      assertContains(output, "Current state: Plugins access enabled", "expected 26.429 build 2429 status to report Plugins after apply", output);
+      assertContains(output, "Current state: Plugins page content enabled", "expected 26.429 build 2429 status to report Plugins page content after apply", output);
+      assertContains(output, "Current state: Plugin detail access enabled", "expected 26.429 build 2429 status to report Plugin detail access after apply", output);
+      assertContains(output, "Current state: Plugin install availability enabled", "expected 26.429 build 2429 status to report Plugin install availability after apply", output);
+      assertContains(output, "Current state: Plugin install modal content enabled", "expected 26.429 build 2429 status to report Plugin install modal content after apply", output);
+      assertNotContains(output, "GPT-5.5 model", "expected 26.429 build 2429 status to omit unpatched GPT-5.5 compatibility targets", output);
+    },
+  });
+
   const inlineApp = join(tmpDir, "Supported26422Build2080InlineRestore.app");
   const inlineResources = join(inlineApp, "Contents", "Resources");
   const inlineArchive = join(inlineResources, "app.asar");
