@@ -16,7 +16,7 @@
 npx codexfast
 ```
 
-Verified for `Codex.app` `26.415.40636` (`build 1799`), `26.417.41555` (`build 1858`), `26.422.21637` (`build 2056`), `26.422.30944` (`build 2080`), `26.422.62136` (`builds 2176, 2180`), `26.422.71525` (`build 2210`), `26.429.20946` (`build 2312`), `26.429.30905` (`build 2345`), and `26.429.61741` (`build 2429`). Feature scope: [`docs/feature-scope.md`](./docs/feature-scope.md).
+Verified for `Codex.app` `26.429.61741` (`build 2429`), `26.429.30905` (`build 2345`), `26.429.20946` (`build 2312`), `26.422.71525` (`build 2210`), `26.422.62136` (`builds 2180, 2176`), `26.422.30944` (`build 2080`), `26.422.21637` (`build 2056`), `26.417.41555` (`build 1858`), and `26.415.40636` (`build 1799`). Feature scope: [`docs/feature-scope.md`](./docs/feature-scope.md).
 
 ## What It Does
 
@@ -91,15 +91,15 @@ Use restore before troubleshooting, before testing a fresh Codex update, or when
 
 The script does not use an official API — it matches code signatures in frontend build output, so it can break after a Codex update.
 
-- Verified on `Codex.app` `26.415.40636` (`build 1799`)
-- Verified on `Codex.app` `26.417.41555` (`build 1858`)
-- Verified on `Codex.app` `26.422.21637` (`build 2056`)
-- Verified on `Codex.app` `26.422.30944` (`build 2080`)
-- Verified on `Codex.app` `26.422.62136` (`builds 2176, 2180`)
-- Verified on `Codex.app` `26.422.71525` (`build 2210`)
-- Verified on `Codex.app` `26.429.20946` (`build 2312`)
-- Verified on `Codex.app` `26.429.30905` (`build 2345`)
 - Verified on `Codex.app` `26.429.61741` (`build 2429`)
+- Verified on `Codex.app` `26.429.30905` (`build 2345`)
+- Verified on `Codex.app` `26.429.20946` (`build 2312`)
+- Verified on `Codex.app` `26.422.71525` (`build 2210`)
+- Verified on `Codex.app` `26.422.62136` (`builds 2180, 2176`)
+- Verified on `Codex.app` `26.422.30944` (`build 2080`)
+- Verified on `Codex.app` `26.422.21637` (`build 2056`)
+- Verified on `Codex.app` `26.417.41555` (`build 1858`)
+- Verified on `Codex.app` `26.415.40636` (`build 1799`)
 - **Enable** is blocked unless the installed version/build is whitelisted
 - **View status** and **Restore** work on any version
 - The GPT-5.5 model-list patch only injects the UI catalog entry on supported builds that still need it. `Codex.app` `26.422.30944` and later builds are expected to expose GPT-5.5 through the official app path, so `codexfast` skips that apply target from `26.422.30944` onward. Your configured provider must still support `gpt-5.5`

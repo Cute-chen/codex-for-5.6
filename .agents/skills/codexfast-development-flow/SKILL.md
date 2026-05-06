@@ -51,6 +51,8 @@ Do not use this skill for release-only work. Use `codexfast-release-flow` for th
 4. Update repo docs in the same change.
    - Update `README.md` when usage, compatibility policy, supported features, or recovery guidance changes.
    - Update `README.zh-CN.md` with the same behavior changes.
+   - Keep README compatibility lists newest-first when adding or reordering verified Codex builds.
+   - When documenting the patching mechanism, explicitly cover packed `app.asar` unpack/repack, why persistent `Contents/Resources/app` loose files are avoided, `ElectronAsarIntegrity`, local ad-hoc `codesign`, notarization/privacy-permission effects, and restore paths.
    - Update `AGENTS.md` when the maintenance checklist or validation expectations change.
    - Update `CHANGELOG.md` under the active unreleased or target release section.
 
