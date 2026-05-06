@@ -50,12 +50,33 @@ Check:
 Meaning:
 
 - The current `CFBundleShortVersionString` + `CFBundleVersion` pair is not on the strict whitelist in `src/cli.mts`.
+- `repair --quiet` and the launchd watcher treat this as a no-op: they log the skip and do not notify, unpack, back up, write `app.asar`, or re-sign.
 
 What to do:
 
 1. Do not patch manually.
 2. Record the build in `docs/compatibility-matrix.md` as `investigating` or `unsupported`.
 3. Follow `docs/version-adaptation-playbook.md`.
+
+## Auto-repair watcher does not re-apply after a Codex update
+
+Check:
+
+- The watcher is installed at `~/Library/LaunchAgents/com.codexfast.watcher.plist`
+- The watcher log at `~/Library/Logs/codexfast/watcher.log`
+- `View current status` reports the new Codex version/build as `supported`
+
+Expected behavior:
+
+- Supported builds run `repair --quiet` when `/Applications/Codex.app/Contents/Resources/app.asar` changes.
+- Unsupported builds are skipped quietly and leave the app untouched.
+- Already patched builds report no changes and leave `app.asar`, `Info.plist`, and the app signature untouched.
+
+If needed, reinstall the watcher:
+
+```bash
+npx codexfast install-watcher
+```
 
 ## `codesign` fails
 

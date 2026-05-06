@@ -6,6 +6,17 @@ This project follows a simple release-oriented changelog format.
 
 ## [Unreleased]
 
+### Added
+
+- Added non-interactive `status`, `apply`, `repair`, `restore`, `install-watcher`, and `uninstall-watcher` commands.
+- Added `help` and `version` commands that work before app-environment checks.
+- Added an optional per-user macOS `launchd` watcher that monitors `Codex.app`'s `app.asar` and runs quiet repair after supported app updates.
+
+### Changed
+
+- Made apply-style runs skip archive rewrite and re-sign when all targets are already patched, preventing watcher self-trigger loops.
+- Made quiet repair skip unsupported Codex builds without notifications, dialogs, backups, unpacking, archive writes, or re-signing.
+
 ## [0.12.0] - 2026-05-06
 
 ### Added

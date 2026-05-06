@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { assertContains, assertNotContains, fail } from "./helpers/assertions.mts";
 import { assertFakeAsarJsParses, extractFakeAsar, readFakeAsarFile, readFakeAsarHeaderHash, writeFakeAsar } from "./helpers/fake-asar.mts";
 import { type AssetProfile, prepareArchivedFakeApp as prepareArchivedFakeAppHelper, prepareLegacyFakeApp as prepareLegacyFakeAppHelper, readInfoPlistHash, writeInfoPlist } from "./helpers/fake-app.mts";
-import { assertCodesignCallContains as assertCodesignCallContainsHelper, assertCodesignCalls as assertCodesignCallsHelper, assertNoTccutilCalls as assertNoTccutilCallsHelper, assertNpmCallContains as assertNpmCallContainsHelper, assertTccutilCallContains as assertTccutilCallContainsHelper, readOutput, resetCodesignCalls as resetCodesignCallsHelper, resetTccutilCalls as resetTccutilCallsHelper, runScript as runScriptHelper, setupStubs as setupStubsHelper } from "./helpers/script-harness.mts";
+import { assertCodesignCallContains as assertCodesignCallContainsHelper, assertCodesignCalls as assertCodesignCallsHelper, assertLaunchctlCallContains as assertLaunchctlCallContainsHelper, assertNoCodesignCalls as assertNoCodesignCallsHelper, assertNoNpmCalls as assertNoNpmCallsHelper, assertNoTccutilCalls as assertNoTccutilCallsHelper, assertNpmCallContains as assertNpmCallContainsHelper, assertTccutilCallContains as assertTccutilCallContainsHelper, readOutput, resetCodesignCalls as resetCodesignCallsHelper, resetNpmCalls as resetNpmCallsHelper, resetTccutilCalls as resetTccutilCallsHelper, runScript as runScriptHelper, setupStubs as setupStubsHelper } from "./helpers/script-harness.mts";
 
 
 const rootDir = resolve(process.env.CODEXFAST_TEST_ROOT ?? process.cwd());
@@ -12,6 +12,7 @@ const tmpDir = mkdtempSync(join(tmpdir(), "codexfast-test."));
 const stubBin = join(tmpDir, "bin");
 const markerFile = join(tmpDir, "codesign.log");
 const fixturesDir = join(rootDir, "test", "fixtures");
+const packageVersion = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8")).version as string;
 
 function setupStubs(): void {
   setupStubsHelper(stubBin, markerFile);
@@ -27,6 +28,10 @@ function prepareLegacyFakeApp(appDir: string, unpackedAssetsDir: string, archive
 
 function runScript(appDir: string, input: string, outputFile: string, extraEnv: Record<string, string> = {}): void {
   runScriptHelper({ rootDir, stubBin, appDir, input, outputFile, extraEnv });
+}
+
+function runScriptCommand(appDir: string, args: string[], outputFile: string, extraEnv: Record<string, string> = {}): void {
+  runScriptHelper({ rootDir, stubBin, appDir, input: "", outputFile, args, extraEnv });
 }
 
 function runScriptWithCodesignFailure(appDir: string, input: string, outputFile: string): void {
@@ -61,6 +66,10 @@ function assertCodesignCallContains(expected: string, outputFile: string): void 
   assertCodesignCallContainsHelper(expected, markerFile, outputFile);
 }
 
+function assertNoCodesignCalls(outputFile: string): void {
+  assertNoCodesignCallsHelper(markerFile, outputFile);
+}
+
 function resetCodesignCalls(): void {
   resetCodesignCallsHelper(markerFile);
 }
@@ -77,6 +86,18 @@ function assertNpmCallContains(expected: string, outputFile: string): void {
   assertNpmCallContainsHelper(expected, markerFile, outputFile);
 }
 
+function assertNoNpmCalls(outputFile: string): void {
+  assertNoNpmCallsHelper(markerFile, outputFile);
+}
+
+function resetNpmCalls(): void {
+  resetNpmCallsHelper(markerFile);
+}
+
+function assertLaunchctlCallContains(expected: string, outputFile: string): void {
+  assertLaunchctlCallContainsHelper(expected, markerFile, outputFile);
+}
+
 function resetTccutilCalls(): void {
   resetTccutilCallsHelper(markerFile);
 }
@@ -84,6 +105,7 @@ function resetTccutilCalls(): void {
 function resetNativeToolCalls(): void {
   resetCodesignCalls();
   resetTccutilCalls();
+  resetNpmCalls();
 }
 
 function assertNoPersistentUnpackDir(resourcesDir: string, outputFile: string): void {
@@ -388,6 +410,45 @@ function main(): void {
   assertGeneratedCliRuntimeRequirements();
   setupStubs();
 
+  const helpOutput = join(tmpDir, "help-output.txt");
+  runScriptCommand(join(tmpDir, "MissingForHelp.app"), ["help"], helpOutput);
+  assertContains(readOutput(helpOutput), `codexfast ${packageVersion}`, "expected help to print the current package version", readOutput(helpOutput));
+  assertContains(readOutput(helpOutput), "Commands:", "expected help to list commands", readOutput(helpOutput));
+  assertContains(readOutput(helpOutput), "install-watcher", "expected help to include watcher install command", readOutput(helpOutput));
+  assertContains(readOutput(helpOutput), "version", "expected help to include version command", readOutput(helpOutput));
+
+  const versionOutput = join(tmpDir, "version-output.txt");
+  runScriptCommand(join(tmpDir, "MissingForVersion.app"), ["version"], versionOutput);
+  if (readOutput(versionOutput).trim() !== `codexfast ${packageVersion}`) {
+    fail("expected version command to print only the current package version", readOutput(versionOutput));
+  }
+
+  const uninstallMissingAppOutput = join(tmpDir, "uninstall-missing-app-output.txt");
+  const uninstallMissingHome = join(tmpDir, "uninstall-missing-home");
+  const uninstallMissingPlist = join(uninstallMissingHome, "Library", "LaunchAgents", "com.codexfast.watcher.plist");
+  const uninstallMissingRuntime = join(uninstallMissingHome, "Library", "Application Support", "codexfast", "codexfast-watcher.js");
+  mkdirSync(join(uninstallMissingHome, "Library", "LaunchAgents"), { recursive: true });
+  mkdirSync(join(uninstallMissingHome, "Library", "Application Support", "codexfast"), { recursive: true });
+  writeFileSync(uninstallMissingPlist, "stale watcher plist");
+  writeFileSync(uninstallMissingRuntime, "stale watcher runtime");
+  runScriptCommand(join(tmpDir, "MissingForUninstall.app"), ["uninstall-watcher"], uninstallMissingAppOutput, { HOME: uninstallMissingHome });
+  if (existsSync(uninstallMissingPlist) || existsSync(uninstallMissingRuntime)) {
+    fail("expected uninstall-watcher to remove watcher files even when Codex.app is missing", readOutput(uninstallMissingAppOutput));
+  }
+  assertContains(readOutput(uninstallMissingAppOutput), "Uninstalled watcher.", "expected uninstall-watcher to complete without app checks", readOutput(uninstallMissingAppOutput));
+  assertNotContains(readOutput(uninstallMissingAppOutput), "Codex resources directory not found", "expected uninstall-watcher to skip Codex.app resource checks", readOutput(uninstallMissingAppOutput));
+
+  const unsupportedRepairNoToolsApp = join(tmpDir, "UnsupportedRepairNoTools.app");
+  const unsupportedRepairNoToolsOutput = join(tmpDir, "unsupported-repair-no-tools-output.txt");
+  const noToolsPath = join(tmpDir, "no-tools-path");
+  mkdirSync(noToolsPath, { recursive: true });
+  prepareArchivedFakeApp(unsupportedRepairNoToolsApp, join(tmpDir, "unsupported-repair-no-tools-assets"), "99.0.0", "9999");
+  runScriptCommand(unsupportedRepairNoToolsApp, ["repair", "--quiet"], unsupportedRepairNoToolsOutput, { PATH: noToolsPath });
+  assertContains(readOutput(unsupportedRepairNoToolsOutput), "Compatibility: unsupported", "expected repair to read unsupported compatibility before patch prerequisites", readOutput(unsupportedRepairNoToolsOutput));
+  assertContains(readOutput(unsupportedRepairNoToolsOutput), "Repair skipped because this Codex.app build is unsupported.", "expected unsupported repair to skip without patch prerequisites", readOutput(unsupportedRepairNoToolsOutput));
+  assertNotContains(readOutput(unsupportedRepairNoToolsOutput), "npm not found", "expected unsupported repair to skip before npm checks", readOutput(unsupportedRepairNoToolsOutput));
+  assertNotContains(readOutput(unsupportedRepairNoToolsOutput), "codesign not found", "expected unsupported repair to skip before codesign checks", readOutput(unsupportedRepairNoToolsOutput));
+
   runApplyRestoreCase({
     name: "existing",
     appDir: join(tmpDir, "Existing.app"),
@@ -574,6 +635,77 @@ function main(): void {
       assertNotContains(output, "GPT-5.5 model", "expected 26.429 build 2429 status to omit unpatched GPT-5.5 compatibility targets", output);
     },
   });
+
+  const quietUnsupportedRepairApp = join(tmpDir, "QuietUnsupportedRepair.app");
+  const quietUnsupportedRepairResources = join(quietUnsupportedRepairApp, "Contents", "Resources");
+  const quietUnsupportedRepairArchive = join(quietUnsupportedRepairResources, "app.asar");
+  const quietUnsupportedRepairOutput = join(tmpDir, "quiet-unsupported-repair-output.txt");
+  prepareArchivedFakeApp(quietUnsupportedRepairApp, join(tmpDir, "quiet-unsupported-repair-assets"), "99.0.0", "9999");
+  const quietUnsupportedArchiveBefore = readFileSync(quietUnsupportedRepairArchive);
+  const quietUnsupportedHashBefore = readInfoPlistHash(quietUnsupportedRepairApp);
+  resetNativeToolCalls();
+  runScriptCommand(quietUnsupportedRepairApp, ["repair", "--quiet"], quietUnsupportedRepairOutput);
+  assertNoCodesignCalls(quietUnsupportedRepairOutput);
+  assertNoNpmCalls(quietUnsupportedRepairOutput);
+  assertNoTccutilCalls(quietUnsupportedRepairOutput);
+  if (existsSync(join(quietUnsupportedRepairResources, "app.asar1"))) {
+    fail("expected quiet unsupported repair to skip backup creation", readOutput(quietUnsupportedRepairOutput));
+  }
+  if (!readFileSync(quietUnsupportedRepairArchive).equals(quietUnsupportedArchiveBefore)) {
+    fail("expected quiet unsupported repair to leave app.asar unchanged", readOutput(quietUnsupportedRepairOutput));
+  }
+  if (readInfoPlistHash(quietUnsupportedRepairApp) !== quietUnsupportedHashBefore) {
+    fail("expected quiet unsupported repair to leave ElectronAsarIntegrity unchanged", readOutput(quietUnsupportedRepairOutput));
+  }
+  assertContains(readOutput(quietUnsupportedRepairOutput), "Compatibility: unsupported", "expected quiet unsupported repair to log compatibility", readOutput(quietUnsupportedRepairOutput));
+  assertContains(readOutput(quietUnsupportedRepairOutput), "Repair skipped because this Codex.app build is unsupported.", "expected quiet unsupported repair to log a skip", readOutput(quietUnsupportedRepairOutput));
+  assertNotContains(readOutput(quietUnsupportedRepairOutput), "notification", "expected quiet unsupported repair not to mention notifications", readOutput(quietUnsupportedRepairOutput));
+  assertNotContains(readOutput(quietUnsupportedRepairOutput), "dialog", "expected quiet unsupported repair not to mention dialogs", readOutput(quietUnsupportedRepairOutput));
+
+  const idempotentRepairApp = join(tmpDir, "IdempotentRepair.app");
+  const idempotentRepairResources = join(idempotentRepairApp, "Contents", "Resources");
+  const idempotentRepairArchive = join(idempotentRepairResources, "app.asar");
+  const repairFirstOutput = join(tmpDir, "repair-first-output.txt");
+  const repairSecondOutput = join(tmpDir, "repair-second-output.txt");
+  prepareArchivedFakeApp(idempotentRepairApp, join(tmpDir, "idempotent-repair-assets"), "26.429.61741", "2429", "26429-2345");
+  resetNativeToolCalls();
+  runScriptCommand(idempotentRepairApp, ["repair", "--quiet"], repairFirstOutput);
+  assertCodesignCalls(1, repairFirstOutput);
+  assertTccutilCallContains("reset ScreenCapture com.openai.codex", repairFirstOutput);
+  assertApplyState26429Build2345(idempotentRepairArchive);
+  assertIntegrityMatches(idempotentRepairApp, idempotentRepairArchive, "expected first repair to update ElectronAsarIntegrity");
+  const repairedArchive = readFileSync(idempotentRepairArchive);
+  const repairedHash = readInfoPlistHash(idempotentRepairApp);
+  resetNativeToolCalls();
+  runScriptCommand(idempotentRepairApp, ["repair", "--quiet"], repairSecondOutput);
+  assertNoCodesignCalls(repairSecondOutput);
+  assertNoTccutilCalls(repairSecondOutput);
+  if (!readFileSync(idempotentRepairArchive).equals(repairedArchive)) {
+    fail("expected second repair to leave already patched app.asar unchanged", readOutput(repairSecondOutput));
+  }
+  if (readInfoPlistHash(idempotentRepairApp) !== repairedHash) {
+    fail("expected second repair to leave ElectronAsarIntegrity unchanged", readOutput(repairSecondOutput));
+  }
+  assertContains(readOutput(repairSecondOutput), "No patch changes were needed; leaving app.asar and signature untouched.", "expected second repair to report no archive rewrite", readOutput(repairSecondOutput));
+
+  const watcherApp = join(tmpDir, "WatcherInstall.app");
+  const watcherOutput = join(tmpDir, "watcher-install-output.txt");
+  const watcherHome = join(tmpDir, "watcher-home");
+  prepareArchivedFakeApp(watcherApp, join(tmpDir, "watcher-install-assets"), "26.429.61741", "2429", "26429-2345");
+  resetNativeToolCalls();
+  runScriptCommand(watcherApp, ["install-watcher"], watcherOutput, { HOME: watcherHome });
+  const watcherPlist = join(watcherHome, "Library", "LaunchAgents", "com.codexfast.watcher.plist");
+  if (!existsSync(watcherPlist)) {
+    fail("expected install-watcher to create a launchd plist", readOutput(watcherOutput));
+  }
+  const watcherPlistText = readFileSync(watcherPlist, "utf8");
+  assertContains(watcherPlistText, "<key>WatchPaths</key>", "expected watcher plist to use WatchPaths", watcherPlistText);
+  assertContains(watcherPlistText, join(watcherApp, "Contents", "Resources", "app.asar"), "expected watcher plist to watch app.asar", watcherPlistText);
+  assertContains(watcherPlistText, "repair", "expected watcher plist to run repair", watcherPlistText);
+  assertContains(watcherPlistText, "--quiet", "expected watcher plist to run repair quietly", watcherPlistText);
+  assertContains(watcherPlistText, "<key>ThrottleInterval</key>", "expected watcher plist to throttle relaunches", watcherPlistText);
+  assertContains(watcherPlistText, join(watcherHome, "Library", "Logs", "codexfast", "watcher.log"), "expected watcher plist to write a log file", watcherPlistText);
+  assertLaunchctlCallContains("bootstrap", watcherOutput);
 
   const inlineApp = join(tmpDir, "Supported26422Build2080InlineRestore.app");
   const inlineResources = join(inlineApp, "Contents", "Resources");

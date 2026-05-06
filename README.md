@@ -20,11 +20,13 @@ Verified for `Codex.app` `26.429.61741` (`build 2429`), `26.429.30905` (`build 2
 
 ## What It Does
 
-Three menu actions on the installed app:
+Menu actions on the installed app:
 
 1. **View current status** — detect version, target files, and whether patching is safe
 2. **Enable custom API features** — restore the feature set above
 3. **Restore original state** — roll back to the vendor bundle
+4. **Install auto-repair watcher** — re-apply after a supported Codex update replaces `app.asar`
+5. **Uninstall auto-repair watcher** — remove the launchd watcher
 
 Patching unpacks `app.asar`, rewrites the frontend assets, repacks, updates the `ElectronAsarIntegrity` hash in `Info.plist`, and ad-hoc re-signs so `Codex.app` still launches.
 
@@ -54,14 +56,25 @@ Or from a clone of this repo:
 ./bin/codexfast
 ```
 
+Print help or the installed package version:
+
+```bash
+npx codexfast help
+npx codexfast version
+```
+
 The script opens an interactive menu:
 
 ```text
 1) View current status
 2) Enable custom API features
 3) Restore original state
+4) Install auto-repair watcher
+5) Uninstall auto-repair watcher
 q) Quit
 ```
+
+The same actions are also available as non-interactive commands: `status`, `apply`, `repair`, `restore`, `install-watcher`, and `uninstall-watcher`.
 
 ### View Status
 
@@ -87,6 +100,26 @@ Choose **3) Restore original state** to turn the patch off. Restore rolls `Codex
 
 Use restore before troubleshooting, before testing a fresh Codex update, or whenever you want to return to the original app behavior.
 
+### Auto-Repair Watcher
+
+Choose **4) Install auto-repair watcher** or run:
+
+```bash
+npx codexfast install-watcher
+```
+
+This installs a per-user macOS `launchd` agent at `~/Library/LaunchAgents/com.codexfast.watcher.plist`. The agent watches `/Applications/Codex.app/Contents/Resources/app.asar` and runs a local copy of `codexfast repair --quiet` when Codex replaces the archive during an app update.
+
+The watcher only applies changes when the newly installed version/build is already in the strict compatibility whitelist. Unsupported builds are skipped quietly: no notification, no dialog, no backup, no unpack, no archive write, and no re-sign. The skip is written to the watcher log at `~/Library/Logs/codexfast/watcher.log`.
+
+`repair` is idempotent. If Codex is already patched, it reports that no changes were needed and leaves `app.asar`, `Info.plist`, and the app signature untouched, so the watcher does not loop on its own repair writes. If Codex is already running when the on-disk archive is repaired, fully quit and reopen Codex to load the patched frontend bundle.
+
+To remove the watcher:
+
+```bash
+npx codexfast uninstall-watcher
+```
+
 ## Compatibility
 
 The script does not use an official API — it matches code signatures in frontend build output, so it can break after a Codex update.
@@ -101,6 +134,7 @@ The script does not use an official API — it matches code signatures in fronte
 - Verified on `Codex.app` `26.417.41555` (`build 1858`)
 - Verified on `Codex.app` `26.415.40636` (`build 1799`)
 - **Enable** is blocked unless the installed version/build is whitelisted
+- **Auto-repair** also skips unsupported version/build pairs quietly and does not modify the app
 - **View status** and **Restore** work on any version
 - The GPT-5.5 model-list patch only injects the UI catalog entry on supported builds that still need it. `Codex.app` `26.422.30944` and later builds are expected to expose GPT-5.5 through the official app path, so `codexfast` skips that apply target from `26.422.30944` onward. Your configured provider must still support `gpt-5.5`
 - For Plugins, the script removes the custom-API gates needed to open the Plugins sidebar/page path on supported builds. On `26.429.20946`, `26.429.30905`, and `26.429.61741`, it also removes the aggregate connector-unavailable install block and keeps install-modal plugin details visible. Actual plugin behavior can still depend on plugin state, connector runtime behavior, or admin restrictions

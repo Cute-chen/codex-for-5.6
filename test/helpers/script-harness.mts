@@ -11,6 +11,7 @@ function writeExecutable(path: string, content: string): void {
 export function setupStubs(stubBin: string, markerFile: string): void {
   const tccutilMarkerFile = `${markerFile}.tccutil`;
   const npmMarkerFile = `${markerFile}.npm`;
+  const launchctlMarkerFile = `${markerFile}.launchctl`;
   mkdirSync(stubBin, { recursive: true });
   writeExecutable(join(stubBin, "clear"), "#!/bin/bash\nexit 0\n");
   writeExecutable(
@@ -43,6 +44,13 @@ if [ "\${CODEXFAST_TEST_TCCUTIL_FAIL:-0}" = "1" ]; then
   printf '%s\\n' "tccutil: reset failed" >&2
   exit 1
 fi
+exit 0
+`,
+  );
+  writeExecutable(
+    join(stubBin, "launchctl"),
+    `#!/bin/bash
+printf '%s\\n' "$*" >> ${JSON.stringify(launchctlMarkerFile)}
 exit 0
 `,
   );
@@ -137,15 +145,16 @@ export function runScript(options: {
   appDir: string;
   input: string;
   outputFile: string;
+  args?: string[];
   extraEnv?: Record<string, string>;
 }): void {
-  const result = spawnSync(process.execPath, [join(options.rootDir, "bin", "codexfast")], {
+  const result = spawnSync(process.execPath, [join(options.rootDir, "bin", "codexfast"), ...(options.args ?? [])], {
     input: options.input,
     encoding: "utf8",
     env: {
       ...process.env,
       ...options.extraEnv,
-      PATH: `${options.stubBin}:${process.env.PATH ?? ""}`,
+      PATH: options.extraEnv?.PATH ?? `${options.stubBin}:${process.env.PATH ?? ""}`,
       CODEXFAST_APP_BUNDLE: options.appDir,
     },
   });
@@ -167,6 +176,12 @@ export function assertCodesignCalls(expectedMin: number, markerFile: string, out
   const callCount = readFileSync(markerFile, "utf8").trim().split("\n").filter(Boolean).length;
   if (callCount < expectedMin) {
     fail(`expected codesign to run at least ${expectedMin} times, got ${callCount}`, `${readFileSync(markerFile, "utf8")}\n${readOutput(outputFile)}`);
+  }
+}
+
+export function assertNoCodesignCalls(markerFile: string, outputFile: string): void {
+  if (existsSync(markerFile)) {
+    fail("expected codesign not to be invoked", `${readFileSync(markerFile, "utf8")}\n${readOutput(outputFile)}`);
   }
 }
 
@@ -219,5 +234,30 @@ export function assertNpmCallContains(expected: string, markerFile: string, outp
   const calls = readFileSync(npmMarkerFile, "utf8");
   if (!calls.includes(expected)) {
     fail(`expected npm call to include ${expected}`, `${calls}\n${readOutput(outputFile)}`);
+  }
+}
+
+export function resetNpmCalls(markerFile: string): void {
+  const npmMarkerFile = `${markerFile}.npm`;
+  if (existsSync(npmMarkerFile)) {
+    unlinkSync(npmMarkerFile);
+  }
+}
+
+export function assertNoNpmCalls(markerFile: string, outputFile: string): void {
+  const npmMarkerFile = `${markerFile}.npm`;
+  if (existsSync(npmMarkerFile)) {
+    fail("expected npm not to be invoked", `${readFileSync(npmMarkerFile, "utf8")}\n${readOutput(outputFile)}`);
+  }
+}
+
+export function assertLaunchctlCallContains(expected: string, markerFile: string, outputFile: string): void {
+  const launchctlMarkerFile = `${markerFile}.launchctl`;
+  if (!existsSync(launchctlMarkerFile)) {
+    fail("expected launchctl to be invoked", readOutput(outputFile));
+  }
+  const calls = readFileSync(launchctlMarkerFile, "utf8");
+  if (!calls.includes(expected)) {
+    fail(`expected launchctl call to include ${expected}`, `${calls}\n${readOutput(outputFile)}`);
   }
 }

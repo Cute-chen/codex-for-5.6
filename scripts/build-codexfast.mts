@@ -15,10 +15,16 @@ const compilerOptions = {
 const patcherSource = ts.transpileModule(readFileSync(join(sourceDir, "patcher.mts"), "utf8"), {
   compilerOptions,
 }).outputText;
-const cliSource = readFileSync(join(sourceDir, "cli.mts"), "utf8").replace(
-  "declare const __PATCHER_SOURCE__: string;",
-  `const __PATCHER_SOURCE__ = ${JSON.stringify(patcherSource)};`,
-);
+const packageVersion = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8")).version as string;
+const cliSource = readFileSync(join(sourceDir, "cli.mts"), "utf8")
+  .replace(
+    "declare const __PATCHER_SOURCE__: string;",
+    `const __PATCHER_SOURCE__ = ${JSON.stringify(patcherSource)};`,
+  )
+  .replace(
+    "declare const __PACKAGE_VERSION__: string;",
+    `const __PACKAGE_VERSION__ = ${JSON.stringify(packageVersion)};`,
+  );
 const transpiledCliSource = ts.transpileModule(cliSource, {
   compilerOptions,
 }).outputText.replace(/^"use strict";\r?\n/, "");

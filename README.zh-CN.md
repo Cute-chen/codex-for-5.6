@@ -21,11 +21,13 @@ npx codexfast
 
 ## 作用
 
-脚本在安装好的 `Codex.app` 上提供三个菜单动作：
+脚本在安装好的 `Codex.app` 上提供这些菜单动作：
 
 1. **查看当前状态** — 检查版本、目标文件，以及当前是否可以安全打补丁
 2. **开启 custom API 相关能力** — 恢复上面列出的能力集合
 3. **恢复原始状态** — 回退到原始应用 bundle
+4. **安装自动修复 watcher** — Codex 更新并替换 `app.asar` 后，在受支持版本上自动重新应用补丁
+5. **卸载自动修复 watcher** — 移除 launchd watcher
 
 打补丁流程：解包 `app.asar`，改写前端资源，重新打包，更新 `Info.plist` 中的 `ElectronAsarIntegrity` hash，再做一次本地 ad-hoc 重签名，保持 `Codex.app` 可以正常启动。
 
@@ -55,14 +57,25 @@ npx codexfast
 ./bin/codexfast
 ```
 
+查看帮助或当前包版本：
+
+```bash
+npx codexfast help
+npx codexfast version
+```
+
 脚本会打开一个交互菜单：
 
 ```text
 1) View current status
 2) Enable custom API features
 3) Restore original state
+4) Install auto-repair watcher
+5) Uninstall auto-repair watcher
 q) Quit
 ```
+
+这些动作也可以用非交互命令直接执行：`status`、`apply`、`repair`、`restore`、`install-watcher` 和 `uninstall-watcher`。
 
 ### 查看状态
 
@@ -88,6 +101,26 @@ q) Quit
 
 排查问题、测试新的 Codex 更新，或想回到官方原始行为时，都可以先执行恢复。
 
+### 自动修复 watcher
+
+选择 **4) Install auto-repair watcher**，或运行：
+
+```bash
+npx codexfast install-watcher
+```
+
+这会安装一个当前用户的 macOS `launchd` agent：`~/Library/LaunchAgents/com.codexfast.watcher.plist`。它会监听 `/Applications/Codex.app/Contents/Resources/app.asar`，当 Codex 更新替换这个归档后，自动运行本地副本里的 `codexfast repair --quiet`。
+
+watcher 只有在新安装的 version/build 已经命中严格兼容白名单时才会应用补丁。不支持的 build 会静默跳过：不会发系统通知，不会弹窗，不会创建备份，不会解包，不会写入归档，也不会重签名。跳过记录只写到 `~/Library/Logs/codexfast/watcher.log`。
+
+`repair` 是幂等的。如果 Codex 已经处在 patched 状态，它会报告不需要修改，并保持 `app.asar`、`Info.plist` 和应用签名不变，因此 watcher 不会因为自己的修复写入而循环触发。若 Codex 已经在运行，磁盘上的归档被修复后，需要完全退出并重新打开 Codex，前端 bundle 才会重新加载。
+
+移除 watcher：
+
+```bash
+npx codexfast uninstall-watcher
+```
+
 ## 兼容性
 
 本脚本不走官方 API，而是通过匹配前端打包产物的代码特征做补丁，Codex 更新后可能失效。
@@ -102,6 +135,7 @@ q) Quit
 - 已验证版本：`Codex.app` `26.417.41555`（`build 1858`）
 - 已验证版本：`Codex.app` `26.415.40636`（`build 1799`）
 - **开启动作** 只允许在白名单里的 version/build 上执行
+- **自动修复** 遇到不支持的 version/build 也会静默跳过，并且不会修改 app
 - **查看状态** 和 **恢复** 在任何版本都可用
 - GPT-5.5 模型列表补丁只在仍需要兼容补丁的受支持版本上注入 UI catalog 项。`Codex.app` `26.422.30944` 及之后的版本预期已经通过官方 app 路径展示 GPT-5.5，因此 `codexfast` 会从 `26.422.30944` 起跳过这个 apply 目标；你的 custom API provider 仍然必须支持 `gpt-5.5`
 - Plugins 会移除受支持版本上打开 Plugins 侧边栏和页面路径所需的 custom API gate；在 `26.429.20946`、`26.429.30905` 和 `26.429.61741` 上也会移除安装按钮的聚合 connector-unavailable 阻断，并保留安装弹窗中的插件详情。插件实际行为仍可能取决于插件状态、connector 运行时行为或管理侧限制
