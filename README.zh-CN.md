@@ -29,6 +29,16 @@ npx codexfast
 
 打补丁流程：解包 `app.asar`，改写前端资源，重新打包，更新 `Info.plist` 中的 `ElectronAsarIntegrity` hash，再做一次本地 ad-hoc 重签名，保持 `Codex.app` 可以正常启动。
 
+## 原理
+
+`Codex.app` 打包后的前端 bundle 里本来就包含 Fast、`/fast`、Speed、模型列表和 Plugins 相关 UI 路径，但其中一部分路径会因为 custom API 用户的本地 gate 判断而被隐藏或禁用。`codexfast` 不新增后端服务，也不调用 OpenAI 私有 API；它只在已验证兼容的版本上修改本机安装的 app bundle。
+
+脚本会先从 `Info.plist` 读取当前安装的 app version 和 build，只有精确命中严格兼容白名单时才允许 apply。对于受支持版本，它会把 `Contents/Resources/app.asar` 解包到临时目录，在 `webview/assets/*.js` 里搜索稳定的功能锚点，再用窄范围代码签名替换移除 custom API gate，或强制打开对应的本地 UI 可用性标记。
+
+需要解包再重新打包，是因为 Codex 把 renderer 代码放在 Electron 的 `app.asar` 归档里；如果直接把散文件放到 `Contents/Resources/app`，会让 app 处在非标准布局，也容易和之后的自动更新冲突。`codexfast` 只在临时目录里解包处理，最终替换的仍然是打包后的 `app.asar`。
+
+替换归档前，脚本会保留恢复路径：`app.asar1` 归档级备份，以及重新打包 bundle 内的 `*.codexfast.bak` 文件级备份。重新打包后，它会更新 `Info.plist` 里的 Electron ASAR integrity hash。由于修改 `app.asar` 会让原始代码签名失效，脚本随后会执行本地 ad-hoc `codesign`，让 macOS 可以启动被修改后的 app。这个本地签名可以通过 `codesign` 校验，但会替换原厂 notarization，因此屏幕录制等 macOS 隐私权限可能需要重新授权。Restore 会按顺序优先使用归档备份，其次使用文件备份，最后再尝试内联恢复规则。
+
 ## 使用方式
 
 仅支持 macOS。需要：`Codex.app` 安装在 `/Applications`，命令行可用 Node.js `>=18.12.0`、`npm` 和系统自带的 `codesign`。

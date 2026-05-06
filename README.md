@@ -28,6 +28,16 @@ Three menu actions on the installed app:
 
 Patching unpacks `app.asar`, rewrites the frontend assets, repacks, updates the `ElectronAsarIntegrity` hash in `Info.plist`, and ad-hoc re-signs so `Codex.app` still launches.
 
+## How It Works
+
+`Codex.app` already contains the Fast, `/fast`, Speed, model-list, and Plugins UI paths in its packaged frontend bundle, but some of those paths are hidden or disabled for custom API users by local gate checks. `codexfast` does not add a new backend service or call a private OpenAI API. It only changes the installed app bundle on verified builds.
+
+The patcher reads the installed app version and build from `Info.plist`, then allows apply only when that exact version/build is in the strict compatibility whitelist. For a supported build, it unpacks `Contents/Resources/app.asar` into a temporary directory, searches `webview/assets/*.js` for stable feature needles, and applies narrow code-signature replacements that remove the custom-API gates or force the local UI availability flag on.
+
+The unpack/repack step is required because Codex ships its renderer code inside the packed Electron archive `app.asar`; patching loose files under `Contents/Resources/app` would leave the app in a non-standard layout and can conflict with future updates. `codexfast` works in a temporary extraction directory and replaces only the packed `app.asar` archive.
+
+Before replacing the archive, it keeps recovery paths: an archive backup at `app.asar1` plus file-level `*.codexfast.bak` backups inside the repacked bundle. After repacking, it updates Electron's ASAR integrity hash in `Info.plist`. Because changing `app.asar` invalidates the app's original code signature, it then performs a local ad-hoc `codesign` so macOS can launch the modified app. This local signature passes `codesign` verification, but it replaces the vendor notarization, so macOS privacy permissions such as screen recording may need to be granted again. Restore reverses this by preferring the archive backup, then file backups, then inline restore rules.
+
 ## Usage
 
 macOS only. Requires `Codex.app` at `/Applications`, Node.js `>=18.12.0`, `npm`, and the built-in `codesign`.
