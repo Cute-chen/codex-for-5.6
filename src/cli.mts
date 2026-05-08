@@ -706,7 +706,6 @@ function watcherPlist(): string {
     <string>${escapeXml(process.execPath)}</string>
     <string>${escapeXml(watcherCliPath())}</string>
     <string>repair</string>
-    <string>--quiet</string>
   </array>
   <key>EnvironmentVariables</key>
   <dict>
@@ -799,7 +798,7 @@ function printUsage(): void {
   printLine("");
   printLine("Usage:");
   printLine("  codexfast");
-  printLine("  codexfast <command> [--quiet]");
+  printLine("  codexfast <command>");
   printLine("");
   printLine("Commands:");
   printLine("  status             Check version, compatibility, and patch target state");
@@ -869,8 +868,8 @@ async function showMenu(): Promise<number> {
 }
 
 async function main(): Promise<number> {
-  // `--quiet` is accepted for watcher commands. Today it only suppresses future
-  // interactive surfaces; repair itself is log-only and never shows dialogs.
+  // Keep accepting the old watcher marker so existing launchd plists and user
+  // scripts keep working, but do not advertise it for new installs.
   const args = process.argv.slice(2).filter((arg) => arg !== "--quiet");
   const command = args[0] ?? "";
 

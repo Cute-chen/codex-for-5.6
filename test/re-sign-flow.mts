@@ -240,6 +240,7 @@ function main(): void {
   assertContains(readOutput(helpOutput), "Commands:", "expected help to list commands", readOutput(helpOutput));
   assertContains(readOutput(helpOutput), "install-watcher", "expected help to include watcher install command", readOutput(helpOutput));
   assertContains(readOutput(helpOutput), "version", "expected help to include version command", readOutput(helpOutput));
+  assertNotContains(readOutput(helpOutput), "--quiet", "expected help not to advertise the legacy quiet marker", readOutput(helpOutput));
 
   const versionOutput = join(tmpDir, "version-output.txt");
   runScriptCommand(join(tmpDir, "MissingForVersion.app"), ["version"], versionOutput);
@@ -550,7 +551,7 @@ function main(): void {
   assertContains(watcherPlistText, "<key>WatchPaths</key>", "expected watcher plist to use WatchPaths", watcherPlistText);
   assertContains(watcherPlistText, join(watcherApp, "Contents", "Resources", "app.asar"), "expected watcher plist to watch app.asar", watcherPlistText);
   assertContains(watcherPlistText, "repair", "expected watcher plist to run repair", watcherPlistText);
-  assertContains(watcherPlistText, "--quiet", "expected watcher plist to run repair quietly", watcherPlistText);
+  assertNotContains(watcherPlistText, "--quiet", "expected new watcher plists not to use the legacy quiet marker", watcherPlistText);
   assertContains(watcherPlistText, "<key>ThrottleInterval</key>", "expected watcher plist to throttle relaunches", watcherPlistText);
   assertNotContains(watcherPlistText, "StandardOutPath", "expected watcher plist not to write stdout to a log file", watcherPlistText);
   assertNotContains(watcherPlistText, "StandardErrorPath", "expected watcher plist not to write stderr to a log file", watcherPlistText);

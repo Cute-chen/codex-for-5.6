@@ -50,7 +50,7 @@ Check:
 Meaning:
 
 - The current `CFBundleShortVersionString` + `CFBundleVersion` pair is not on the strict whitelist in `src/supported-app-versions.mts`.
-- `repair --quiet` and the launchd watcher treat this as a no-op: they do not notify, unpack, back up, write `app.asar`, re-sign, or write a log file.
+- `repair` and the launchd watcher treat this as a no-op: they do not notify, unpack, back up, write `app.asar`, re-sign, or write a log file.
 
 What to do:
 
@@ -67,7 +67,7 @@ Check:
 
 Expected behavior:
 
-- Supported builds run `repair --quiet` when `/Applications/Codex.app/Contents/Resources/app.asar` changes.
+- Supported builds run `repair` when `/Applications/Codex.app/Contents/Resources/app.asar` changes.
 - Unsupported builds are skipped quietly and leave the app untouched.
 - Already patched builds report no changes and leave `app.asar`, `Info.plist`, and the app signature untouched.
 
@@ -99,7 +99,7 @@ Expected behavior:
 - `apply` modifies `app.asar` and then ad-hoc re-signs `Codex.app`.
 - Re-signing changes the code-signing identity macOS uses for privacy permissions.
 - After a successful `apply` or `restore`, `codexfast` runs `tccutil reset ScreenCapture <bundle id>` so macOS asks for a fresh Screen & System Audio Recording decision on the next launch.
-- `restore` removes the auto-repair watcher before changing `app.asar`, so a restored app is not immediately re-patched by `repair --quiet`.
+- `restore` removes the auto-repair watcher before changing `app.asar`, so a restored app is not immediately re-patched by `repair`.
 
 What to do:
 

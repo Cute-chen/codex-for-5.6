@@ -8,7 +8,9 @@ This project follows a simple release-oriented changelog format.
 
 ### Changed
 
-- Restore now removes the auto-repair watcher before modifying `app.asar`, preventing a watched restore from being immediately re-patched by `repair --quiet`.
+- Restore now removes the auto-repair watcher before modifying `app.asar`, preventing a watched restore from being immediately re-patched by `repair`.
+- New auto-repair watcher installs now call `repair` directly; the legacy `--quiet` marker remains accepted for existing watcher plists and user scripts.
+- Documented the non-interactive command reference for `status`, `apply`, `repair`, `restore`, `install-watcher`, and `uninstall-watcher`.
 
 ## [0.13.0] - 2026-05-08
 
