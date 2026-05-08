@@ -4,7 +4,7 @@ All notable changes to `codexfast` will be documented in this file.
 
 This project follows a simple release-oriented changelog format.
 
-## [Unreleased]
+## [0.13.1] - 2026-05-08
 
 ### Changed
 
