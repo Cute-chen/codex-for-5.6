@@ -13,11 +13,11 @@ export const GPT_55_OFFICIAL_MODEL_LIST_MIN_VERSION = "26.422.30944";
 const GPT_55_MODEL_ENTRY =
   "{id:`gpt-5.5`,model:`gpt-5.5`,upgrade:null,upgradeInfo:null,availabilityNux:null,displayName:`GPT-5.5`,description:`Frontier model for complex coding, research, and real-world work.`,hidden:!1,supportedReasoningEfforts:[{reasoningEffort:`low`,description:`Fast responses with lighter reasoning`},{reasoningEffort:`medium`,description:`Balances speed and reasoning depth for everyday tasks`},{reasoningEffort:`high`,description:`Greater reasoning depth for complex problems`},{reasoningEffort:`xhigh`,description:`Extra high reasoning depth for complex problems`}],defaultReasoningEffort:`medium`,inputModalities:[`text`],supportsPersonality:!0,additionalSpeedTiers:[`fast`],isDefault:!1}";
 const GUARDED_SIGNATURE =
-  /([A-Za-z_$][\w$]*)=((?:_e|ae|P|N|de)\(\),)(\{serviceTierSettings:[^,}]+,setServiceTier:[^}]+\}=(?:Ce|se|be|xe|ye|Ve)\(\);)if\(!\1\)return null;/;
+  /([A-Za-z_$][\w$]*)=((?:_e|ae|P|N|de|ie)\(\),)(\{serviceTierSettings:[^,}]+,setServiceTier:[^}]+\}=(?:Ce|se|be|xe|ye|Ve|de)\(\);)if\(!\1\)return null;/;
 const PATCHED_SIGNATURE =
-  /([A-Za-z_$][\w$]*)=!0,(\{serviceTierSettings:[^,}]+,setServiceTier:[^}]+\}=(Ce|se|be|xe|ye|Ve)\(\);)let /;
+  /([A-Za-z_$][\w$]*)=!0,(\{serviceTierSettings:[^,}]+,setServiceTier:[^}]+\}=(Ce|se|be|xe|ye|Ve|de)\(\);)let /;
 const NORMALIZED_PATCHED_SIGNATURE =
-  /([A-Za-z_$][\w$]*)=((?:_e|ae|P|N|de)\(\),)(\{serviceTierSettings:[^,}]+,setServiceTier:[^}]+\}=(?:Ce|se|be|xe|ye|Ve)\(\);)let /;
+  /([A-Za-z_$][\w$]*)=((?:_e|ae|P|N|de|ie)\(\),)(\{serviceTierSettings:[^,}]+,setServiceTier:[^}]+\}=(?:Ce|se|be|xe|ye|Ve|de)\(\);)let /;
 const SLASH_COMMAND_GUARDED_SIGNATURE =
   /(id:`speed`,title:[^,]+,description:[^,]+,requiresEmptyComposer:!1,enabled:)([A-Za-z_$][\w$]*)(,Icon:[^,]+,onSelect:[^,]+,dependencies:[A-Za-z_$][\w$]*})/;
 const SLASH_COMMAND_PATCHED_SIGNATURE =
@@ -39,9 +39,9 @@ const INTELLIGENCE_SPEED_GUARDED_SIGNATURE_GF =
 const INTELLIGENCE_SPEED_PATCHED_SIGNATURE_GF =
   /(\{serviceTierSettings:[^,}]+,setServiceTier:[^}]+\}=Yp\([^)]*\),)([A-Za-z_$][\w$]*)=!0,/;
 const INTELLIGENCE_SPEED_GUARDED_SIGNATURE_QS =
-  /(let )([A-Za-z_$][\w$]*)=qs\(([^)]+)\),([A-Za-z_$][\w$]*=zr\([A-Za-z_$][\w$]*,n\),)/;
+  /(let )([A-Za-z_$][\w$]*)=(qs|va)\(([^)]+)\),([A-Za-z_$][\w$]*=(?:zr|fi)\([A-Za-z_$][\w$]*,n\),)/;
 const INTELLIGENCE_SPEED_PATCHED_SIGNATURE_QS =
-  /(let )([A-Za-z_$][\w$]*)=!0,([A-Za-z_$][\w$]*=zr\([A-Za-z_$][\w$]*,n\),)/;
+  /(let )([A-Za-z_$][\w$]*)=!0,([A-Za-z_$][\w$]*=(?:zr|fi)\([A-Za-z_$][\w$]*,n\),)/;
 const PLUGINS_SIDEBAR_GUARDED_SIGNATURE_OLD =
   /(\{authMethod:([A-Za-z_$][\w$]*)\}=[^,]+,[^]*?cf\(`533078438`\),)([A-Za-z_$][\w$]*)=\2===`apikey`,/;
 const PLUGINS_SIDEBAR_PATCHED_SIGNATURE_OLD =
@@ -64,14 +64,18 @@ const PLUGINS_SIDEBAR_PATCHED_SIGNATURE_26429 =
   /(\{authMethod:([A-Za-z_$][\w$]*)\}=[^,]+,)([A-Za-z_$][\w$]*)=ms\(`533078438`\),([A-Za-z_$][\w$]*)=ed\(\2\),([A-Za-z_$][\w$]*)=!1,([^]*?)([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*\(\{hostId:[^}]+\}\))([,;])/;
 const PLUGINS_SIDEBAR_LEGACY_PATCHED_SIGNATURE_26429 =
   /(\{authMethod:([A-Za-z_$][\w$]*)\}=[^,]+,)([A-Za-z_$][\w$]*)=ms\(`533078438`\),([A-Za-z_$][\w$]*)=ed\(\2\),([A-Za-z_$][\w$]*)=!1,([^]*?)([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*\(\{hostId:[^}]+\}\))&&!\4([,;])/;
+const PLUGINS_SIDEBAR_GUARDED_SIGNATURE_26506 =
+  /(\{authMethod:([A-Za-z_$][\w$]*)\}=[^,]+,)([A-Za-z_$][\w$]*)=rs\(`533078438`\),([A-Za-z_$][\w$]*)=Xc\(\2\),([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*)&&\3&&\4,([^]*?)([A-Za-z_$][\w$]*)=\6&&([A-Za-z_$][\w$]*)&&!\4([,;])/;
+const PLUGINS_SIDEBAR_PATCHED_SIGNATURE_26506 =
+  /(\{authMethod:([A-Za-z_$][\w$]*)\}=[^,]+,)([A-Za-z_$][\w$]*)=rs\(`533078438`\),([A-Za-z_$][\w$]*)=Xc\(\2\),([A-Za-z_$][\w$]*)=!1,([^]*?)([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*)&&([A-Za-z_$][\w$]*)([,;])/;
 const PLUGINS_PAGE_CONTENT_GUARDED_SIGNATURE =
   /(let )([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*),([A-Za-z_$][\w$]*),([A-Za-z_$][\w$]*);(if\(e\[\d+\]!==[A-Za-z_$][\w$]*\|\|e\[\d+\]!==\2\|\|)/;
 const PLUGINS_PAGE_CONTENT_PATCHED_SIGNATURE =
   /(let )([A-Za-z_$][\w$]*)=!1,([A-Za-z_$][\w$]*),([A-Za-z_$][\w$]*);(if\(e\[\d+\]!==[A-Za-z_$][\w$]*\|\|e\[\d+\]!==\2\|\|)/;
 const PLUGIN_DETAIL_AUTH_GUARDED_SIGNATURE =
-  /(\{authMethod:([A-Za-z_$][\w$]*)\}=pe\(\);)if\(qe\(\2\)\)\{/;
+  /(\{authMethod:([A-Za-z_$][\w$]*)\}=([A-Za-z_$][\w$]*)\(\);)if\(([A-Za-z_$][\w$]*)\(\2\)\)\{/;
 const PLUGIN_DETAIL_AUTH_PATCHED_SIGNATURE =
-  /(\{authMethod:([A-Za-z_$][\w$]*)\}=pe\(\);)if\(!1\)\{/;
+  /(\{authMethod:([A-Za-z_$][\w$]*)\}=([A-Za-z_$][\w$]*)\(\);)if\(!1\)\{/;
 const PLUGIN_INSTALL_AVAILABILITY_GUARDED_SIGNATURE =
   /(let )([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*)\.length>0&&([A-Za-z_$][\w$]*)===\3\.length\?([A-Za-z_$][\w$]*)\?`disabled-by-admin`:`connector-unavailable`:null,([A-Za-z_$][\w$]*);/;
 const PLUGIN_INSTALL_AVAILABILITY_PATCHED_SIGNATURE =
@@ -130,6 +134,7 @@ function resolveSpeedAvailabilityCall(serviceTierFactory: string): string {
     xe: "P",
     ye: "N",
     Ve: "de",
+    de: "ie",
   };
   const availabilityCall = availabilityCalls[serviceTierFactory];
   if (!availabilityCall) {
@@ -220,8 +225,8 @@ export const TARGET_SPECS: TargetSpec[] = [
     guardedSignature: INTELLIGENCE_SPEED_GUARDED_SIGNATURE_QS,
     patchedSignature: INTELLIGENCE_SPEED_PATCHED_SIGNATURE_QS,
     legacyPatchedSignature: null,
-    applyReplacement: "$1$2=!0,$4",
-    restoreReplacement: "$1$2=qs($3),$4",
+    applyReplacement: "$1$2=!0,$5",
+    restoreReplacement: "$1$2=$3($4),$5",
   },
   {
     id: "fast-slash-command",
@@ -277,6 +282,16 @@ export const TARGET_SPECS: TargetSpec[] = [
     restoreReplacement: "$1$3=ms(`533078438`),$4=ed($2),$5=$3&&$4,$6$7=$8&&!$4$9",
   },
   {
+    id: "plugins-access-26506",
+    label: "Plugins access",
+    needle: PLUGINS_SIDEBAR_NEEDLE,
+    guardedSignature: PLUGINS_SIDEBAR_GUARDED_SIGNATURE_26506,
+    patchedSignature: PLUGINS_SIDEBAR_PATCHED_SIGNATURE_26506,
+    legacyPatchedSignature: null,
+    applyReplacement: "$1$3=rs(`533078438`),$4=Xc($2),$5=!1,$7$8=$6&&$9$10",
+    restoreReplacement: "$1$3=rs(`533078438`),$4=Xc($2),$5=$6&&$3&&$4,$7$8=$6&&$9&&!$4$10",
+  },
+  {
     id: "plugins-page-content-26429",
     label: "Plugins page content",
     needle: PLUGINS_PAGE_CONTENT_NEEDLE,
@@ -294,7 +309,7 @@ export const TARGET_SPECS: TargetSpec[] = [
     patchedSignature: PLUGIN_DETAIL_AUTH_PATCHED_SIGNATURE,
     legacyPatchedSignature: null,
     applyReplacement: "$1if(!1){",
-    restoreReplacement: "$1if(qe($2)){",
+    restoreReplacement: "$1if($4($2)){",
   },
   {
     id: "plugin-install-availability-26429",

@@ -1,0 +1,2 @@
+function gy({desktopNavItemsEnabled:e,localProjectActionsEnabled:t}){let n=U(K),r=W(Ns),i=No(),a=Jr(),o=ni(),s=Va(),{authMethod:c}=Xs(),l=rs(`533078438`),u=Xc(c),d=e&&l&&u,f=Se({hostId:eo}),p=e&&f&&!u,m=Qs(),h=t&&!m;return{n,r,i,a,o,s,c,l,u,d,f,p,h,tooltip:"sidebarElectron.pluginsDisabledTooltip"}}
+const modelListBridge26506Build2575={"list-models-for-host":mT((e,{hostId:t,...n})=>e.sendRequest(`model/list`,n))};

@@ -8,6 +8,7 @@ This project follows a simple release-oriented changelog format.
 
 ### Added
 
+- Added support for `Codex.app` `26.506.21252` (`build 2575`) after direct installed-bundle inspection and real app apply/status validation confirmed the updated Settings Fast, `/fast`, composer `Intelligence` Speed menu, and Plugins target shapes.
 - Added non-interactive `status`, `apply`, `repair`, `restore`, `install-watcher`, and `uninstall-watcher` commands.
 - Added `help` and `version` commands that work before app-environment checks.
 - Added an optional per-user macOS `launchd` watcher that monitors `Codex.app`'s `app.asar` and runs quiet repair after supported app updates.

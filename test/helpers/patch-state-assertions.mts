@@ -130,6 +130,30 @@ export function assertApplyState26429Build2345(archivePath: string): void {
   assertNotContains(index, "codexfast-gpt55", "expected 26.429 build 2345 apply to leave the model list handler on the official path");
 }
 
+export function assertApplyState26506Build2575(archivePath: string): void {
+  const generalSettings = archiveFile(archivePath, "webview/assets/general-settings-BNOywoSY.js");
+  assertContains(generalSettings, "{serviceTierSettings:r,setServiceTier:i}=de();let o;", "expected 26.506 build 2575 apply to remove the guarded Speed settings return");
+  assertNotContains(generalSettings, "if(!n)return null;", "expected 26.506 build 2575 apply to expose the Settings Speed control");
+  const composer = archiveFile(archivePath, "webview/assets/composer-D82P7v-B.js");
+  assertContains(composer, "enabled:!0", "expected 26.506 build 2575 apply to enable the Fast slash command");
+  assertContains(composer, "let _=!0,v=fi(_T,n)", "expected 26.506 build 2575 apply to enable the composer Intelligence Speed menu");
+  const appMain = archiveFile(archivePath, "webview/assets/app-main-DOFYRRSd.js");
+  assertContains(appMain, "d=!1", "expected 26.506 build 2575 apply to remove the Plugins sidebar api-key gate");
+  assertContains(appMain, /p=e&&f([,;])/, "expected 26.506 build 2575 apply to expose the Plugins nav label for api-key users");
+  const skillsPage = archiveFile(archivePath, "webview/assets/skills-page-CN4AdIT4.js");
+  assertContains(skillsPage, "let m=!1", "expected 26.506 build 2575 apply to render Plugins content for api-key users");
+  assertNotContains(skillsPage, "let m=f", "expected 26.506 build 2575 apply to remove the Plugins page auth gate");
+  const pluginDetailPage = archiveFile(archivePath, "webview/assets/plugin-detail-page-Dht2dFf-.js");
+  assertContains(pluginDetailPage, "if(!1)", "expected 26.506 build 2575 apply to remove the plugin detail api-key redirect");
+  assertNotContains(pluginDetailPage, "if(ge(i))", "expected 26.506 build 2575 apply to remove the guarded plugin detail redirect");
+  const pluginInstallFlow = archiveFile(archivePath, "webview/assets/plugins-availability-DMayGLTU.js");
+  assertContains(pluginInstallFlow, "let E=h.length>0&&w===h.length&&C?`disabled-by-admin`:null,O", "expected 26.506 build 2575 apply to allow plugin install when connector availability is the only blocker");
+  assertNotContains(pluginInstallFlow, "let E=h.length>0&&w===h.length?C?`disabled-by-admin`:`connector-unavailable`:null,O", "expected 26.506 build 2575 apply to remove aggregate connector-unavailable install blocking");
+  assertContains(pluginInstallFlow, "p=(c?.apps.length??0)>0&&!1,m", "expected 26.506 build 2575 apply to keep plugin install modal information visible for ON_INSTALL app plugins");
+  assertNotContains(pluginInstallFlow, "p=(c?.apps.length??0)>0&&c?.summary.authPolicy===`ON_INSTALL`,m", "expected 26.506 build 2575 apply to remove the disclosure-only install modal content gate");
+  assertNotContains(appMain, "codexfast-gpt55", "expected 26.506 build 2575 apply to leave the model list handler on the official path");
+}
+
 export function assertGuardedState26422(archivePath: string, context: string): void {
   assertContains(archiveFile(archivePath, "webview/assets/general-settings-CnVD4YyB.js"), "if(!n)return null;", `expected ${context} to preserve the 26.422 guarded Speed settings state`);
   const index = archiveFile(archivePath, "webview/assets/index-gATb9Tvd.js");
@@ -206,4 +230,26 @@ export function assertGuardedState26429Build2345(archivePath: string, context: s
   assertContains(pluginInstallFlow, "f=(s?.apps.length??0)>0&&s?.summary.authPolicy===`ON_INSTALL`,p", `expected ${context} to preserve the 26.429 disclosure-only install modal content gate`);
   assertNotContains(pluginInstallFlow, "f=(s?.apps.length??0)>0&&!1,p", `expected ${context} to restore the 26.429 install modal content gate`);
   assertNotContains(index, "codexfast-gpt55", `expected ${context} not to add GPT-5.5 model list injection`);
+}
+
+export function assertGuardedState26506Build2575(archivePath: string, context: string): void {
+  assertContains(archiveFile(archivePath, "webview/assets/general-settings-BNOywoSY.js"), "if(!n)return null;", `expected ${context} to preserve the 26.506 build 2575 guarded Speed settings state`);
+  const composer = archiveFile(archivePath, "webview/assets/composer-D82P7v-B.js");
+  assertContains(composer, "enabled:a", `expected ${context} to preserve the 26.506 build 2575 guarded Fast slash command state`);
+  assertContains(composer, "let _=va(g),v=fi(_T,n)", `expected ${context} to preserve the 26.506 build 2575 guarded composer Intelligence Speed menu state`);
+  const appMain = archiveFile(archivePath, "webview/assets/app-main-DOFYRRSd.js");
+  assertContains(appMain, "d=e&&l&&u", `expected ${context} to preserve the 26.506 build 2575 guarded Plugins sidebar state`);
+  assertContains(appMain, "p=e&&f&&!u", `expected ${context} to preserve the 26.506 build 2575 guarded Plugins nav label state`);
+  const skillsPage = archiveFile(archivePath, "webview/assets/skills-page-CN4AdIT4.js");
+  assertContains(skillsPage, "let m=f", `expected ${context} to preserve the 26.506 guarded Plugins page auth gate`);
+  assertNotContains(skillsPage, "let m=!1", `expected ${context} to restore the 26.506 Plugins page auth gate`);
+  const pluginDetailPage = archiveFile(archivePath, "webview/assets/plugin-detail-page-Dht2dFf-.js");
+  assertContains(pluginDetailPage, "if(ge(i))", `expected ${context} to preserve the 26.506 guarded plugin detail redirect`);
+  assertNotContains(pluginDetailPage, "if(!1)", `expected ${context} to restore the 26.506 plugin detail redirect`);
+  const pluginInstallFlow = archiveFile(archivePath, "webview/assets/plugins-availability-DMayGLTU.js");
+  assertContains(pluginInstallFlow, "let E=h.length>0&&w===h.length?C?`disabled-by-admin`:`connector-unavailable`:null,O", `expected ${context} to preserve the 26.506 aggregate connector-unavailable install block`);
+  assertNotContains(pluginInstallFlow, "let E=h.length>0&&w===h.length&&C?`disabled-by-admin`:null,O", `expected ${context} to restore the 26.506 plugin install availability gate`);
+  assertContains(pluginInstallFlow, "p=(c?.apps.length??0)>0&&c?.summary.authPolicy===`ON_INSTALL`,m", `expected ${context} to preserve the 26.506 disclosure-only install modal content gate`);
+  assertNotContains(pluginInstallFlow, "p=(c?.apps.length??0)>0&&!1,m", `expected ${context} to restore the 26.506 install modal content gate`);
+  assertNotContains(appMain, "codexfast-gpt55", `expected ${context} not to add GPT-5.5 model list injection`);
 }
