@@ -507,6 +507,10 @@ function main(): void {
       assertContains(output, "Current state: Plugin detail access enabled", "expected 26.506 build 2620 status to report Plugin detail access after apply", output);
       assertContains(output, "Current state: Plugin install availability enabled", "expected 26.506 build 2620 status to report Plugin install availability after apply", output);
       assertContains(output, "Current state: Plugin install modal content enabled", "expected 26.506 build 2620 status to report Plugin install modal content after apply", output);
+      assertContains(output, "Target file: webview/assets/app-main-Bucm979x.js", "expected 26.506 build 2620 status to print bundle-relative target paths", output);
+      assertContains(output, "Backup file: webview/assets/app-main-Bucm979x.js.codexfast.bak", "expected 26.506 build 2620 status to print bundle-relative backup paths", output);
+      assertNotContains(output, "Target file: ../../", "expected 26.506 build 2620 status target paths to omit temp directory traversal", output);
+      assertNotContains(output, "Backup file: ../../", "expected 26.506 build 2620 status backup paths to omit temp directory traversal", output);
       assertNotContains(output, "GPT-5.5 model", "expected 26.506 build 2620 status to omit unpatched GPT-5.5 compatibility targets", output);
     },
   });
