@@ -18,9 +18,44 @@ if (!isNodeVersionSupported(process.versions.node, MIN_NODE_VERSION)) {
   console.error("codexfast requires Node.js >= " + MIN_NODE_VERSION + ". Current version: " + process.versions.node + ".");
   process.exit(1);
 }
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 const node_crypto_1 = require("node:crypto");
 const node_fs_1 = require("node:fs");
+const http = __importStar(require("node:http"));
+const https = __importStar(require("node:https"));
 const node_os_1 = require("node:os");
 const node_path_1 = require("node:path");
 const promises_1 = require("node:readline/promises");
@@ -84,6 +119,113 @@ function run(command, args, options = {}) {
         stdout: result.stdout ?? "",
         stderr: result.stderr ?? "",
     };
+}
+function encodeWebSocketTextFrame(payload) {
+    const body = Buffer.from(payload, "utf8");
+    const mask = (0, node_crypto_1.randomBytes)(4);
+    const header = [0x81];
+    if (body.length < 126) {
+        header.push(0x80 | body.length);
+    }
+    else if (body.length <= 0xffff) {
+        header.push(0x80 | 126, (body.length >> 8) & 0xff, body.length & 0xff);
+    }
+    else {
+        throw new Error("CDP frame payload is too large.");
+    }
+    const masked = Buffer.alloc(body.length);
+    for (let index = 0; index < body.length; index += 1) {
+        masked[index] = body[index] ^ mask[index % 4];
+    }
+    return Buffer.concat([Buffer.from(header), mask, masked]);
+}
+function decodeWebSocketTextFrames(buffer) {
+    const messages = [];
+    let offset = 0;
+    while (offset + 2 <= buffer.length) {
+        const first = buffer[offset];
+        const second = buffer[offset + 1];
+        const opcode = first & 0x0f;
+        const masked = (second & 0x80) !== 0;
+        let length = second & 0x7f;
+        let headerLength = 2;
+        if (length === 126) {
+            if (offset + 4 > buffer.length) {
+                break;
+            }
+            length = buffer.readUInt16BE(offset + 2);
+            headerLength = 4;
+        }
+        else if (length === 127) {
+            throw new Error("CDP frame payload is too large.");
+        }
+        if (masked) {
+            throw new Error("Unexpected masked server WebSocket frame.");
+        }
+        if (offset + headerLength + length > buffer.length) {
+            break;
+        }
+        const payload = buffer.subarray(offset + headerLength, offset + headerLength + length);
+        if (opcode === 1) {
+            messages.push(payload.toString("utf8"));
+        }
+        offset += headerLength + length;
+    }
+    return { messages, remaining: buffer.subarray(offset) };
+}
+function runCdpFrameSelfTest() {
+    const payload = JSON.stringify({ id: 1, method: "Runtime.enable" });
+    const encoded = encodeWebSocketTextFrame(payload);
+    if (encoded[0] !== 0x81 || (encoded[1] & 0x80) === 0) {
+        printLine("CDP frame self-test failed");
+        return 1;
+    }
+    const clientPayloadLength = encoded[1] & 0x7f;
+    const clientMaskOffset = clientPayloadLength === 126 ? 4 : 2;
+    const clientPayloadOffset = clientMaskOffset + 4;
+    const clientMask = encoded.subarray(clientMaskOffset, clientPayloadOffset);
+    const clientBody = encoded.subarray(clientPayloadOffset);
+    const unmasked = Buffer.alloc(clientBody.length);
+    for (let index = 0; index < clientBody.length; index += 1) {
+        unmasked[index] = clientBody[index] ^ clientMask[index % 4];
+    }
+    if (unmasked.toString("utf8") !== payload) {
+        printLine("CDP frame self-test failed");
+        return 1;
+    }
+    const serverFrame = Buffer.concat([Buffer.from([0x81, 0x0d]), Buffer.from("hello runtime")]);
+    const decoded = decodeWebSocketTextFrames(serverFrame);
+    if (decoded.messages[0] !== "hello runtime" || decoded.remaining.length !== 0) {
+        printLine("CDP frame self-test failed");
+        return 1;
+    }
+    printLine("CDP frame self-test passed");
+    return 0;
+}
+function httpGetJson(url) {
+    return new Promise((resolve, reject) => {
+        const client = url.startsWith("https:") ? https : http;
+        client
+            .get(url, (response) => {
+            const chunks = [];
+            response.on("data", (chunk) => {
+                chunks.push(Buffer.from(chunk));
+            });
+            response.on("end", () => {
+                if ((response.statusCode ?? 500) >= 400) {
+                    reject(new Error(`HTTP ${response.statusCode}`));
+                    return;
+                }
+                try {
+                    resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")));
+                }
+                catch (error) {
+                    reject(error);
+                }
+            });
+        })
+            .on("error", reject);
+    });
 }
 function escapeXml(value) {
     return value
@@ -984,6 +1126,9 @@ async function main() {
     // scripts keep working, but do not advertise it for new installs.
     const args = process.argv.slice(2).filter((arg) => arg !== "--quiet");
     const command = args[0] ?? "";
+    if (command === "__selftest-cdp-frame") {
+        return runCdpFrameSelfTest();
+    }
     if (command === "-h" || command === "--help" || command === "help") {
         printUsage();
         return 0;

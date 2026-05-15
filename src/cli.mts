@@ -1,5 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import * as http from "node:http";
+import * as https from "node:https";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline/promises";
@@ -65,6 +67,13 @@ type MetadataChangeResult = {
   ok: boolean;
 };
 
+type CdpTarget = {
+  id: string;
+  type: string;
+  url: string;
+  webSocketDebuggerUrl?: string;
+};
+
 function printLine(message = ""): void {
   console.log(message);
 }
@@ -92,6 +101,124 @@ function run(command: string, args: string[], options: { input?: string; env?: N
     stdout: result.stdout ?? "",
     stderr: result.stderr ?? "",
   };
+}
+
+function encodeWebSocketTextFrame(payload: string): Buffer {
+  const body = Buffer.from(payload, "utf8");
+  const mask = randomBytes(4);
+  const header: number[] = [0x81];
+  if (body.length < 126) {
+    header.push(0x80 | body.length);
+  } else if (body.length <= 0xffff) {
+    header.push(0x80 | 126, (body.length >> 8) & 0xff, body.length & 0xff);
+  } else {
+    throw new Error("CDP frame payload is too large.");
+  }
+
+  const masked = Buffer.alloc(body.length);
+  for (let index = 0; index < body.length; index += 1) {
+    masked[index] = body[index] ^ mask[index % 4];
+  }
+
+  return Buffer.concat([Buffer.from(header), mask, masked]);
+}
+
+function decodeWebSocketTextFrames(buffer: Buffer): { messages: string[]; remaining: Buffer } {
+  const messages: string[] = [];
+  let offset = 0;
+
+  while (offset + 2 <= buffer.length) {
+    const first = buffer[offset];
+    const second = buffer[offset + 1];
+    const opcode = first & 0x0f;
+    const masked = (second & 0x80) !== 0;
+    let length = second & 0x7f;
+    let headerLength = 2;
+
+    if (length === 126) {
+      if (offset + 4 > buffer.length) {
+        break;
+      }
+      length = buffer.readUInt16BE(offset + 2);
+      headerLength = 4;
+    } else if (length === 127) {
+      throw new Error("CDP frame payload is too large.");
+    }
+
+    if (masked) {
+      throw new Error("Unexpected masked server WebSocket frame.");
+    }
+    if (offset + headerLength + length > buffer.length) {
+      break;
+    }
+
+    const payload = buffer.subarray(offset + headerLength, offset + headerLength + length);
+    if (opcode === 1) {
+      messages.push(payload.toString("utf8"));
+    }
+    offset += headerLength + length;
+  }
+
+  return { messages, remaining: buffer.subarray(offset) };
+}
+
+function runCdpFrameSelfTest(): number {
+  const payload = JSON.stringify({ id: 1, method: "Runtime.enable" });
+  const encoded = encodeWebSocketTextFrame(payload);
+  if (encoded[0] !== 0x81 || (encoded[1] & 0x80) === 0) {
+    printLine("CDP frame self-test failed");
+    return 1;
+  }
+
+  const clientPayloadLength = encoded[1] & 0x7f;
+  const clientMaskOffset = clientPayloadLength === 126 ? 4 : 2;
+  const clientPayloadOffset = clientMaskOffset + 4;
+  const clientMask = encoded.subarray(clientMaskOffset, clientPayloadOffset);
+  const clientBody = encoded.subarray(clientPayloadOffset);
+  const unmasked = Buffer.alloc(clientBody.length);
+  for (let index = 0; index < clientBody.length; index += 1) {
+    unmasked[index] = clientBody[index] ^ clientMask[index % 4];
+  }
+  if (unmasked.toString("utf8") !== payload) {
+    printLine("CDP frame self-test failed");
+    return 1;
+  }
+
+  const serverFrame = Buffer.concat([Buffer.from([0x81, 0x0d]), Buffer.from("hello runtime")]);
+  const decoded = decodeWebSocketTextFrames(serverFrame);
+  if (decoded.messages[0] !== "hello runtime" || decoded.remaining.length !== 0) {
+    printLine("CDP frame self-test failed");
+    return 1;
+  }
+
+  printLine("CDP frame self-test passed");
+  return 0;
+}
+
+function httpGetJson<T>(url: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const client = url.startsWith("https:") ? https : http;
+    client
+      .get(url, (response: http.IncomingMessage) => {
+        const chunks: Buffer[] = [];
+        response.on("data", (chunk: Buffer | string) => {
+          chunks.push(Buffer.from(chunk));
+        });
+        response.on("end", () => {
+          if ((response.statusCode ?? 500) >= 400) {
+            reject(new Error(`HTTP ${response.statusCode}`));
+            return;
+          }
+
+          try {
+            resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")) as T);
+          } catch (error) {
+            reject(error);
+          }
+        });
+      })
+      .on("error", reject);
+  });
 }
 
 function escapeXml(value: string): string {
@@ -1079,6 +1206,10 @@ async function main(): Promise<number> {
   // scripts keep working, but do not advertise it for new installs.
   const args = process.argv.slice(2).filter((arg) => arg !== "--quiet");
   const command = args[0] ?? "";
+
+  if (command === "__selftest-cdp-frame") {
+    return runCdpFrameSelfTest();
+  }
 
   if (command === "-h" || command === "--help" || command === "help") {
     printUsage();

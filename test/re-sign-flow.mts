@@ -280,12 +280,17 @@ function main(): void {
   assertContains(readOutput(helpOutput), "install-watcher", "expected help to include watcher install command", readOutput(helpOutput));
   assertContains(readOutput(helpOutput), "version", "expected help to include version command", readOutput(helpOutput));
   assertNotContains(readOutput(helpOutput), "--quiet", "expected help not to advertise the legacy quiet marker", readOutput(helpOutput));
+  assertNotContains(readOutput(helpOutput), "__selftest-cdp-frame", "expected help not to list the hidden CDP self-test command", readOutput(helpOutput));
 
   const versionOutput = join(tmpDir, "version-output.txt");
   runScriptCommand(join(tmpDir, "MissingForVersion.app"), ["version"], versionOutput);
   if (readOutput(versionOutput).trim() !== `codexfast ${packageVersion}`) {
     fail("expected version command to print only the current package version", readOutput(versionOutput));
   }
+
+  const cdpEncodeOutput = join(tmpDir, "cdp-encode-output.txt");
+  runScriptCommand(join(tmpDir, "MissingForCdpSelfTest.app"), ["__selftest-cdp-frame"], cdpEncodeOutput);
+  assertContains(readOutput(cdpEncodeOutput), "CDP frame self-test passed", "expected CDP frame self-test to pass", readOutput(cdpEncodeOutput));
 
   const uninstallMissingAppOutput = join(tmpDir, "uninstall-missing-app-output.txt");
   const uninstallMissingHome = join(tmpDir, "uninstall-missing-home");
