@@ -19,10 +19,13 @@ function inlineLocalModuleSource(source: string): string {
 }
 
 const patcherTargetsSource = inlineLocalModuleSource(readFileSync(join(sourceDir, "patcher-targets.mts"), "utf8"));
+const patchEngineSource = inlineLocalModuleSource(readFileSync(join(sourceDir, "patch-engine.mts"), "utf8"))
+  .replace(/^import \{[^]*?\} from "\.\/patcher-targets\.mts";\r?\n\r?\n?/, "");
 const patcherEngineSource = readFileSync(join(sourceDir, "patcher.mts"), "utf8")
+  .replace(/^import \{[^]*?\} from "\.\/patch-engine\.mts";\r?\n/, "")
   .replace(/^import \{[^]*?\} from "\.\/patcher-targets\.mts";\r?\n\r?\n?/, "")
   .replace(/^(?:(?:\/\/ Build marker: stripped by scripts\/build-codexfast\.mts and re-added at the top\r?\n\/\/ of the concatenated patcher source\.\r?\n)?)"use strict";\r?\n\r?\n?/, "");
-const patcherSource = ts.transpileModule(`"use strict";\n\n${patcherTargetsSource}\n${patcherEngineSource}`, {
+const patcherSource = ts.transpileModule(`"use strict";\n\n${patcherTargetsSource}\n${patchEngineSource}\n${patcherEngineSource}`, {
   compilerOptions,
 }).outputText;
 const packageVersion = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8")).version as string;

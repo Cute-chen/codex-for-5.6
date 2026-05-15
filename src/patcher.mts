@@ -1,4 +1,5 @@
-import { GPT_55_OFFICIAL_MODEL_LIST_MIN_VERSION, TARGET_SPECS, type FileTarget, type Replacement, type TargetMatch, type TargetSpec, type TargetState } from "./patcher-targets.mts";
+import { describeState, inspectSpec, replaceContent, replaceContentOrThrow } from "./patch-engine.mts";
+import { GPT_55_OFFICIAL_MODEL_LIST_MIN_VERSION, TARGET_SPECS, type FileTarget, type TargetSpec, type TargetState } from "./patcher-targets.mts";
 
 // Build marker: stripped by scripts/build-codexfast.mts and re-added at the top
 // of the concatenated patcher source.
@@ -12,28 +13,6 @@ const path: typeof import("node:path") = require("path");
 const [, , command, assetsDirArg, backupSuffix, legacyBackupSuffix = "", appVersionKey = "unknown"] = process.argv;
 const assetsDir = path.resolve(assetsDirArg);
 const backupSuffixes = [backupSuffix, legacyBackupSuffix].filter((suffix, index, suffixes) => suffix && suffixes.indexOf(suffix) === index);
-
-function replaceContent(content: string, signature: RegExp, replacement: Replacement): string {
-  if (typeof replacement === "string") {
-    return content.replace(signature, replacement);
-  }
-
-  return content.replace(signature, (...args: unknown[]) =>
-    replacement(String(args[0] ?? ""), ...args.slice(1).map((value) => String(value))),
-  );
-}
-
-function replaceContentOrThrow(
-  content: string,
-  signature: RegExp | null,
-  replacement: Replacement | undefined,
-  label: string,
-): string {
-  if (!signature || !replacement) {
-    throw new Error(`Missing replacement metadata for ${label}.`);
-  }
-  return replaceContent(content, signature, replacement);
-}
 
 function isPresent<T>(value: T | null): value is T {
   return value !== null;
@@ -55,31 +34,6 @@ function walkJsFiles(dir: string): string[] {
   }
 
   return results;
-}
-
-function inspectSpec(content: string, spec: TargetSpec): TargetMatch | null {
-  if (!content.includes(spec.needle)) {
-    return null;
-  }
-
-  const guarded = spec.guardedSignature.test(content);
-  const patched = spec.patchedSignature.test(content);
-  const legacyPatched = spec.legacyPatchedSignature?.test(content) ?? false;
-
-  if (!guarded && !patched && !legacyPatched) {
-    return null;
-  }
-
-  if (!isTargetRelevantForCommand(spec, { guarded, patched, legacyPatched })) {
-    return null;
-  }
-
-  return {
-    spec,
-    guarded,
-    patched,
-    legacyPatched,
-  };
 }
 
 function isGpt55ModelTarget(spec: TargetSpec): boolean {
@@ -132,7 +86,10 @@ function isTargetRelevantForCommand(spec: TargetSpec, state: TargetState): boole
 
 function inspectFile(filePath: string): FileTarget | null {
   const content = fs.readFileSync(filePath, "utf8");
-  const matches = TARGET_SPECS.map((spec) => inspectSpec(content, spec)).filter(isPresent);
+  const matches = TARGET_SPECS
+    .map((spec) => inspectSpec(content, spec))
+    .filter(isPresent)
+    .filter((match) => isTargetRelevantForCommand(match.spec, match));
 
   if (matches.length === 0) {
     return null;
@@ -149,16 +106,6 @@ function inspectFile(filePath: string): FileTarget | null {
 
 function findTargets(dir: string): FileTarget[] {
   return walkJsFiles(dir).map(inspectFile).filter(isPresent);
-}
-
-function describeState(match: TargetMatch): string {
-  if (match.guarded) {
-    return `${match.spec.label} disabled`;
-  }
-  if (match.patched || match.legacyPatched) {
-    return `${match.spec.label} enabled`;
-  }
-  return "Unknown state";
 }
 
 function writeBackupIfNeeded(fileTarget: FileTarget): void {

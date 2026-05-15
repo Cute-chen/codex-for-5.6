@@ -29,6 +29,7 @@ import {
   assertGuardedState26513Build2816,
 } from "./helpers/patch-state-assertions.mts";
 import { assertCodesignCallContains as assertCodesignCallContainsHelper, assertCodesignCalls as assertCodesignCallsHelper, assertLaunchctlCallContains as assertLaunchctlCallContainsHelper, assertNoCodesignCalls as assertNoCodesignCallsHelper, assertNoNpmCalls as assertNoNpmCallsHelper, assertNoTccutilCalls as assertNoTccutilCallsHelper, assertNpmCallContains as assertNpmCallContainsHelper, assertTccutilCallContains as assertTccutilCallContainsHelper, readOutput, resetCodesignCalls as resetCodesignCallsHelper, resetNpmCalls as resetNpmCallsHelper, resetTccutilCalls as resetTccutilCallsHelper, runScript as runScriptHelper, setupStubs as setupStubsHelper } from "./helpers/script-harness.mts";
+import { applyRuntimePatchesToBody } from "../src/patch-engine.mts";
 import { TARGET_SPECS } from "../src/patcher-targets.mts";
 
 
@@ -183,6 +184,13 @@ function assertPatcherTargetsRuntimeImportable(): void {
   );
 }
 
+function assertRuntimePatchEnginePatchesBody(): void {
+  const body = "function dP(){return lP().info(`browser-use native pipe peer authorization enabled`,{safe:{mode:a?`dev`:`packaged`},sensitive:{}}),e=>{let t=fP(e);return t==null?{authorized:!1,reason:`missing-socket-file-descriptor`}:s.authorizeSocketPeer(t,a)}}";
+  const result = applyRuntimePatchesToBody("webview/assets/browser-use-native-pipe-Demo.js", body);
+  assertContains(result.content, "codexfast-browser-peer-auth", "expected runtime patch engine to patch matching JS body");
+  assertContains(result.patchedLabels.join("\n"), "Browser-use native pipe peer auth", "expected runtime patch engine to report patched target label");
+}
+
 function renameBackupSuffixes(dir: string, fromSuffix: string, toSuffix: string): void {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const fullPath = join(dir, entry.name);
@@ -258,6 +266,7 @@ function runApplyRestoreCase(caseConfig: {
 function main(): void {
   assertGeneratedCliRuntimeRequirements();
   assertPatcherTargetsRuntimeImportable();
+  assertRuntimePatchEnginePatchesBody();
   setupStubs();
 
   const helpOutput = join(tmpDir, "help-output.txt");
