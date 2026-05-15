@@ -323,6 +323,26 @@ function main(): void {
   assertContains(readOutput(unsupportedLaunchOutput), "Exit code: 1", "expected unsupported launch to return exit code 1", readOutput(unsupportedLaunchOutput));
   assertNoLaunchCalls(unsupportedLaunchOutput);
 
+  const nonRunningLaunchApp = join(tmpDir, "NonRunningLaunch.app");
+  const nonRunningLaunchOutput = join(tmpDir, "non-running-launch-output.txt");
+  prepareArchivedFakeApp(nonRunningLaunchApp, join(tmpDir, "non-running-launch-assets"), "26.513.20950", "2816", "26513-2816");
+  runScriptCommand(nonRunningLaunchApp, ["launch"], nonRunningLaunchOutput, { CODEXFAST_TEST_ALLOW_NONZERO: "1" });
+  assertContains(readOutput(nonRunningLaunchOutput), "Action: launch", "expected launch to print an action header", readOutput(nonRunningLaunchOutput));
+  assertContains(readOutput(nonRunningLaunchOutput), "Compatibility: supported", "expected supported launch to print compatibility", readOutput(nonRunningLaunchOutput));
+  assertContains(readOutput(nonRunningLaunchOutput), "Runtime launch is not implemented yet.", "expected supported non-running launch to reach the placeholder branch", readOutput(nonRunningLaunchOutput));
+  assertContains(readOutput(nonRunningLaunchOutput), "Exit code: 1", "expected supported non-running launch to return exit code 1", readOutput(nonRunningLaunchOutput));
+  assertNoLaunchCalls(nonRunningLaunchOutput);
+
+  const missingPgrepLaunchApp = join(tmpDir, "MissingPgrepLaunch.app");
+  const missingPgrepLaunchOutput = join(tmpDir, "missing-pgrep-launch-output.txt");
+  prepareArchivedFakeApp(missingPgrepLaunchApp, join(tmpDir, "missing-pgrep-launch-assets"), "26.513.20950", "2816", "26513-2816");
+  runScriptCommand(missingPgrepLaunchApp, ["launch"], missingPgrepLaunchOutput, { CODEXFAST_TEST_ALLOW_NONZERO: "1", PATH: stubBin });
+  assertContains(readOutput(missingPgrepLaunchOutput), "Action: launch", "expected launch to print an action header", readOutput(missingPgrepLaunchOutput));
+  assertContains(readOutput(missingPgrepLaunchOutput), "Compatibility: supported", "expected supported launch to print compatibility", readOutput(missingPgrepLaunchOutput));
+  assertContains(readOutput(missingPgrepLaunchOutput), "Cannot determine whether Codex.app is running because pgrep was not found.", "expected launch to fail closed when pgrep is unavailable", readOutput(missingPgrepLaunchOutput));
+  assertContains(readOutput(missingPgrepLaunchOutput), "Exit code: 1", "expected missing-pgrep launch to return exit code 1", readOutput(missingPgrepLaunchOutput));
+  assertNoLaunchCalls(missingPgrepLaunchOutput);
+
   const runningLaunchApp = join(tmpDir, "RunningLaunch.app");
   const runningLaunchOutput = join(tmpDir, "running-launch-output.txt");
   prepareArchivedFakeApp(runningLaunchApp, join(tmpDir, "running-launch-assets"));

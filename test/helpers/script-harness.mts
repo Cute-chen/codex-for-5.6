@@ -63,6 +63,16 @@ exit 0
 `,
   );
   writeExecutable(
+    join(stubBin, "pgrep"),
+    `#!/bin/bash
+if [ "\${CODEXFAST_TEST_PGREP_FAIL:-0}" = "1" ]; then
+  printf '%s\\n' "pgrep: failed" >&2
+  exit 2
+fi
+exit 1
+`,
+  );
+  writeExecutable(
     join(stubBin, "npm"),
     `#!/bin/bash
 printf '%s\\n' "$*" >> ${JSON.stringify(npmMarkerFile)}

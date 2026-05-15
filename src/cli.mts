@@ -800,17 +800,28 @@ function runEmbeddedTool(action: string): number {
   return exitCode;
 }
 
-function isCodexRunning(): boolean {
+type CodexRunningCheck =
+  | { ok: true; running: boolean }
+  | { ok: false; message: string };
+
+function checkCodexRunning(): CodexRunningCheck {
   if (process.env.CODEXFAST_TEST_CODEX_RUNNING === "1") {
-    return true;
+    return { ok: true, running: true };
   }
 
   const pgrepBin = resolveCommand("pgrep");
   if (!pgrepBin) {
-    return false;
+    return { ok: false, message: "Cannot determine whether Codex.app is running because pgrep was not found." };
   }
 
-  return run(pgrepBin, ["-x", "Codex"]).status === 0;
+  const result = run(pgrepBin, ["-x", "Codex"]);
+  if (result.status === 0) {
+    return { ok: true, running: true };
+  }
+  if (result.status === 1) {
+    return { ok: true, running: false };
+  }
+  return { ok: false, message: `Cannot determine whether Codex.app is running because pgrep failed with exit code ${result.status}.` };
 }
 
 function runRuntimeLaunch(): number {
@@ -824,7 +835,15 @@ function runRuntimeLaunch(): number {
     return 1;
   }
 
-  if (isCodexRunning()) {
+  const runningCheck = checkCodexRunning();
+  if (!runningCheck.ok) {
+    printLine(runningCheck.message);
+    printLine("");
+    printLine("Exit code: 1");
+    return 1;
+  }
+
+  if (runningCheck.running) {
     printLine("Codex.app is already running. Quit Codex.app before using runtime launch.");
     printLine("");
     printLine("Exit code: 1");
