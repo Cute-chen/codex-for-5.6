@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { assertContains, assertNotContains, fail } from "./helpers/assertions.mts";
 import { assertFakeAsarJsParses, extractFakeAsar, readFakeAsarHeaderHash, writeFakeAsar } from "./helpers/fake-asar.mts";
-import { type AssetProfile, prepareArchivedFakeApp as prepareArchivedFakeAppHelper, prepareLegacyFakeApp as prepareLegacyFakeAppHelper, readInfoPlistHash, writeInfoPlist } from "./helpers/fake-app.mts";
+import { type AssetProfile, prepareArchivedFakeApp as prepareArchivedFakeAppHelper, prepareLegacyFakeApp as prepareLegacyFakeAppHelper, readInfoPlistHash, readInfoPlistSparklePublicEdKey, writeInfoPlist } from "./helpers/fake-app.mts";
 import {
   archiveFile,
   assertApplyState,
@@ -16,6 +16,7 @@ import {
   assertApplyState26429Build2345,
   assertApplyState26506Build2575,
   assertApplyState26506Build2620,
+  assertApplyState26513Build2816,
   assertGuardedState,
   assertGuardedState26417,
   assertGuardedState26422,
@@ -25,6 +26,7 @@ import {
   assertGuardedState26429Build2345,
   assertGuardedState26506Build2575,
   assertGuardedState26506Build2620,
+  assertGuardedState26513Build2816,
 } from "./helpers/patch-state-assertions.mts";
 import { assertCodesignCallContains as assertCodesignCallContainsHelper, assertCodesignCalls as assertCodesignCallsHelper, assertLaunchctlCallContains as assertLaunchctlCallContainsHelper, assertNoCodesignCalls as assertNoCodesignCallsHelper, assertNoNpmCalls as assertNoNpmCallsHelper, assertNoTccutilCalls as assertNoTccutilCallsHelper, assertNpmCallContains as assertNpmCallContainsHelper, assertTccutilCallContains as assertTccutilCallContainsHelper, readOutput, resetCodesignCalls as resetCodesignCallsHelper, resetNpmCalls as resetNpmCallsHelper, resetTccutilCalls as resetTccutilCallsHelper, runScript as runScriptHelper, setupStubs as setupStubsHelper } from "./helpers/script-harness.mts";
 import { TARGET_SPECS } from "../src/patcher-targets.mts";
@@ -36,6 +38,7 @@ const stubBin = join(tmpDir, "bin");
 const markerFile = join(tmpDir, "codesign.log");
 const fixturesDir = join(rootDir, "test", "fixtures");
 const packageVersion = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8")).version as string;
+const codex26513SparklePublicEdKey = "mNfr1v9t63BfgDtlw4C8lRvSY6uMggIXABDOCi3tS6k=";
 
 function setupStubs(): void {
   setupStubsHelper(stubBin, markerFile);
@@ -525,6 +528,87 @@ function main(): void {
       assertNotContains(output, "GPT-5.5 model", "expected 26.506 build 2620 status to omit unpatched GPT-5.5 compatibility targets", output);
     },
   });
+
+  runApplyRestoreCase({
+    name: "supported-26513-2816",
+    appDir: join(tmpDir, "Supported26513Build2816.app"),
+    assetsRoot: join(tmpDir, "supported-26513-2816-assets"),
+    appVersion: "26.513.20950",
+    appBuild: "2816",
+    assetProfile: "26513-2816",
+    applyAssert: assertApplyState26513Build2816,
+    restoreAssert: assertGuardedState26513Build2816,
+    restoreContext: "26.513 build 2816 restore",
+    postApplyAssert: (output) => assertNotContains(output, "patched: GPT-5.5", "expected 26.513 build 2816 apply to skip GPT-5.5 patch targets", output),
+    statusAssert: (output) => {
+      assertContains(output, "Status: Speed setting enabled", "expected 26.513 build 2816 status to report the Settings Speed target after apply", output);
+      assertContains(output, "Status: Fast slash command enabled", "expected 26.513 build 2816 status to report the Fast slash command after apply", output);
+      assertContains(output, "Status: Composer Intelligence Speed menu enabled", "expected 26.513 build 2816 status to report the Intelligence Speed target after apply", output);
+      assertContains(output, "Status: Plugins access enabled", "expected 26.513 build 2816 status to report Plugins after apply", output);
+      assertContains(output, "Status: Plugins page content enabled", "expected 26.513 build 2816 status to report Plugins page content after apply", output);
+      assertContains(output, "Status: Plugin detail access enabled", "expected 26.513 build 2816 status to report Plugin detail access after apply", output);
+      assertContains(output, "Status: Plugin install availability enabled", "expected 26.513 build 2816 status to report Plugin install availability after apply", output);
+      assertContains(output, "Status: Plugin install modal content enabled", "expected 26.513 build 2816 status to report Plugin install modal content after apply", output);
+      assertNotContains(output, "Target file:", "expected 26.513 build 2816 status to omit internal target paths", output);
+      assertNotContains(output, "Backup file:", "expected 26.513 build 2816 status to omit internal backup paths", output);
+      assertNotContains(output, "GPT-5.5 model", "expected 26.513 build 2816 status to omit unpatched GPT-5.5 compatibility targets", output);
+    },
+  });
+
+  const sparkleBridgeApp = join(tmpDir, "SparkleBridge.app");
+  const sparkleBridgeResources = join(sparkleBridgeApp, "Contents", "Resources");
+  const sparkleBridgeApplyOutput = join(tmpDir, "sparkle-bridge-apply-output.txt");
+  const sparkleBridgeRestoreOutput = join(tmpDir, "sparkle-bridge-restore-output.txt");
+  prepareArchivedFakeApp(sparkleBridgeApp, join(tmpDir, "sparkle-bridge-assets"), "26.506.31421", "2620", "26506-2620");
+  runScriptCommand(sparkleBridgeApp, ["apply"], sparkleBridgeApplyOutput);
+  assertContains(
+    readOutput(sparkleBridgeApplyOutput),
+    "Updated Sparkle public EdDSA key for in-app updates.",
+    "expected apply to bridge Sparkle public key for the next official update",
+    readOutput(sparkleBridgeApplyOutput),
+  );
+  if (readInfoPlistSparklePublicEdKey(sparkleBridgeApp) !== codex26513SparklePublicEdKey) {
+    fail("expected apply to write the next official Sparkle public key", readFileSync(join(sparkleBridgeApp, "Contents", "Info.plist"), "utf8"));
+  }
+  assertCodesignCalls(1, sparkleBridgeApplyOutput);
+  resetNativeToolCalls();
+  runScriptCommand(sparkleBridgeApp, ["restore"], sparkleBridgeRestoreOutput);
+  if (readInfoPlistSparklePublicEdKey(sparkleBridgeApp) === codex26513SparklePublicEdKey) {
+    fail("expected restore to restore the original Sparkle public key", readFileSync(join(sparkleBridgeApp, "Contents", "Info.plist"), "utf8"));
+  }
+  if (existsSync(join(sparkleBridgeResources, "SUPublicEDKey.codexfast.bak"))) {
+    fail("expected restore to remove the Sparkle public key backup", readOutput(sparkleBridgeRestoreOutput));
+  }
+  assertCodesignCalls(1, sparkleBridgeRestoreOutput);
+  resetNativeToolCalls();
+
+  const sparkleBridgeAlreadyPatchedApp = join(tmpDir, "SparkleBridgeAlreadyPatched.app");
+  const sparkleBridgeAlreadyPatchedOutput = join(tmpDir, "sparkle-bridge-already-patched-output.txt");
+  prepareArchivedFakeApp(
+    sparkleBridgeAlreadyPatchedApp,
+    join(tmpDir, "sparkle-bridge-already-patched-assets"),
+    "26.506.31421",
+    "2620",
+    "26506-2620",
+  );
+  runScriptCommand(sparkleBridgeAlreadyPatchedApp, ["apply"], join(tmpDir, "sparkle-bridge-already-patched-first-output.txt"));
+  writeInfoPlist(
+    sparkleBridgeAlreadyPatchedApp,
+    readInfoPlistHash(sparkleBridgeAlreadyPatchedApp),
+    "26.506.31421",
+    "2620",
+    "com.openai.codex",
+  );
+  resetNativeToolCalls();
+  runScriptCommand(sparkleBridgeAlreadyPatchedApp, ["repair", "--quiet"], sparkleBridgeAlreadyPatchedOutput);
+  assertContains(
+    readOutput(sparkleBridgeAlreadyPatchedOutput),
+    "Updated Sparkle public EdDSA key for in-app updates.",
+    "expected repair to bridge Sparkle public key even when feature patches are already present",
+    readOutput(sparkleBridgeAlreadyPatchedOutput),
+  );
+  assertCodesignCalls(1, sparkleBridgeAlreadyPatchedOutput);
+  resetNativeToolCalls();
 
   const quietUnsupportedRepairApp = join(tmpDir, "QuietUnsupportedRepair.app");
   const quietUnsupportedRepairResources = join(quietUnsupportedRepairApp, "Contents", "Resources");

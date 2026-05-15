@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { spawnSync } from "node:child_process";
 import vm from "node:vm";
 import { fail } from "./assertions.mts";
 
@@ -103,13 +104,35 @@ export function assertFakeAsarJsParses(archivePath: string): void {
   const headerBufferSize = archive.readUInt32LE(4);
   const headerStringSize = archive.readUInt32LE(12);
   const header = JSON.parse(archive.subarray(16, 16 + headerStringSize).toString("utf8")) as AsarNode;
-  function walk(node: AsarNode): void {
-    for (const value of Object.values(node.files ?? {})) {
+
+  function assertJsParses(source: string, relativePath: string): void {
+    try {
+      new vm.Script(source, { filename: relativePath });
+      return;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.includes("Cannot use import statement outside a module") && !message.includes("Unexpected token 'export'")) {
+        throw error;
+      }
+    }
+
+    const result = spawnSync(process.execPath, ["--check", "--input-type=module"], {
+      input: source,
+      encoding: "utf8",
+    });
+    if (result.status !== 0) {
+      fail(`expected fake asar module JavaScript to parse: ${relativePath}`, result.stderr || result.stdout);
+    }
+  }
+
+  function walk(node: AsarNode, segments: string[] = []): void {
+    for (const [name, value] of Object.entries(node.files ?? {})) {
+      const nextSegments = [...segments, name];
       if (value.files) {
-        walk(value);
+        walk(value, nextSegments);
       } else {
         const fileOffset = 8 + headerBufferSize + Number(value.offset);
-        new vm.Script(archive.subarray(fileOffset, fileOffset + Number(value.size)).toString("utf8"));
+        assertJsParses(archive.subarray(fileOffset, fileOffset + Number(value.size)).toString("utf8"), nextSegments.join("/"));
       }
     }
   }

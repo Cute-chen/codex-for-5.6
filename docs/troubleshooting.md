@@ -78,6 +78,24 @@ If needed, reinstall the watcher:
 npx codexfast install-watcher
 ```
 
+## In-app update fails after `apply`
+
+Expected boundary:
+
+- `apply` modifies `app.asar` and ad-hoc re-signs `Codex.app`.
+- That local signature replaces the vendor Developer ID identity, so Sparkle cannot rely on code-signing identity continuity for update validation.
+- For the `26.506.31421` (`build 2620`) to `26.513.20950` (`build 2816`) update path, current `codexfast` backs up `SUPublicEDKey` and updates it to the `26.513.20950` public EdDSA key before re-signing.
+
+What to do:
+
+1. Run the latest `npx codexfast apply` on `26.506.31421` (`build 2620`), or install the watcher so `repair` can apply the same metadata bridge.
+2. Confirm the output includes `Updated Sparkle public EdDSA key for in-app updates.` when the bridge is newly applied.
+3. If the build is newer than `26.513.20950` and OpenAI rotated Sparkle keys again, adapt the build-specific bridge before claiming in-app updates are supported.
+
+Recovery:
+
+- Run `npx codexfast restore` to restore the backed-up `SUPublicEDKey` and original archive when the backup is present.
+
 ## `codesign` fails
 
 Check:

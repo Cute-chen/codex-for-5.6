@@ -17,7 +17,7 @@ npx codexfast
 ```
 
 
-已验证兼容：`Codex.app` `26.506.31421`（`build 2620`）、`26.506.21252`（`build 2575`）、`26.429.61741`（`build 2429`）、`26.429.30905`（`build 2345`）、`26.429.20946`（`build 2312`）、`26.422.71525`（`build 2210`）、`26.422.62136`（`build 2180、2176`）、`26.422.30944`（`build 2080`）、`26.422.21637`（`build 2056`）、`26.417.41555`（`build 1858`）和 `26.415.40636`（`build 1799`）。能力定义见 [`docs/feature-scope.md`](./docs/feature-scope.md)。
+已验证兼容：`Codex.app` `26.513.20950`（`build 2816`）、`26.506.31421`（`build 2620`）、`26.506.21252`（`build 2575`）、`26.429.61741`（`build 2429`）、`26.429.30905`（`build 2345`）、`26.429.20946`（`build 2312`）、`26.422.71525`（`build 2210`）、`26.422.62136`（`build 2180、2176`）、`26.422.30944`（`build 2080`）、`26.422.21637`（`build 2056`）、`26.417.41555`（`build 1858`）和 `26.415.40636`（`build 1799`）。能力定义见 [`docs/feature-scope.md`](./docs/feature-scope.md)。
 
 ## 作用
 
@@ -40,6 +40,8 @@ npx codexfast
 需要解包再重新打包，是因为 Codex 把 renderer 代码放在 Electron 的 `app.asar` 归档里；如果直接把散文件放到 `Contents/Resources/app`，会让 app 处在非标准布局，也容易和之后的自动更新冲突。`codexfast` 只在临时目录里解包处理，最终替换的仍然是打包后的 `app.asar`。
 
 替换归档前，脚本会保留恢复路径：`app.asar1` 归档级备份，以及重新打包 bundle 内的 `*.codexfast.bak` 文件级备份。重新打包后，它会更新 `Info.plist` 里的 Electron ASAR integrity hash。由于修改 `app.asar` 会让原始代码签名失效，脚本随后会执行本地 ad-hoc `codesign`，让 macOS 可以启动被修改后的 app。这个本地签名可以通过 `codesign` 校验，但会替换原厂 notarization，因此屏幕录制等 macOS 隐私权限可能需要重新授权。Restore 会按顺序优先使用归档备份，其次使用文件备份，最后再尝试内联恢复规则。
+
+对于已经打过补丁的 `26.506.31421`（`build 2620`），`apply` 和 watcher 的 `repair` 还会备份 `SUPublicEDKey`，并更新为 `26.513.20950`（`build 2816`）使用的 public EdDSA key。这样在本地 ad-hoc 重签名之后，Sparkle 的软件内更新校验路径仍然可用。恢复时如果存在备份，会把原 key 写回去。
 
 ## 使用方式
 
@@ -135,6 +137,7 @@ npx codexfast uninstall-watcher
 
 本脚本不走官方 API，而是通过匹配前端打包产物的代码特征做补丁，Codex 更新后可能失效。
 
+- 已验证版本：`Codex.app` `26.513.20950`（`build 2816`）
 - 已验证版本：`Codex.app` `26.506.31421`（`build 2620`）
 - 已验证版本：`Codex.app` `26.506.21252`（`build 2575`）
 - 已验证版本：`Codex.app` `26.429.61741`（`build 2429`）
@@ -150,7 +153,7 @@ npx codexfast uninstall-watcher
 - **自动修复** 遇到不支持的 version/build 也会静默跳过，并且不会修改 app
 - **查看状态** 和 **恢复** 在任何版本都可用
 - GPT-5.5 模型列表补丁只在仍需要兼容补丁的受支持版本上注入 UI catalog 项。`Codex.app` `26.422.30944` 及之后的版本预期已经通过官方 app 路径展示 GPT-5.5，因此 `codexfast` 会从 `26.422.30944` 起跳过这个 apply 目标；你的 custom API provider 仍然必须支持 `gpt-5.5`
-- Plugins 会移除受支持版本上打开 Plugins 侧边栏和页面路径所需的 custom API gate；在 `26.429.20946`、`26.429.30905`、`26.429.61741`、`26.506.21252` 和 `26.506.31421` 上也会移除安装按钮的聚合 connector-unavailable 阻断，并保留安装弹窗中的插件详情。插件实际行为仍可能取决于插件状态、connector 运行时行为或管理侧限制
+- Plugins 会移除受支持版本上打开 Plugins 侧边栏和页面路径所需的 custom API gate；在 `26.429.20946`、`26.429.30905`、`26.429.61741`、`26.506.21252`、`26.506.31421` 和 `26.513.20950` 上也会移除安装按钮的聚合 connector-unavailable 阻断，并保留安装弹窗中的插件详情。插件实际行为仍可能取决于插件状态、connector 运行时行为或管理侧限制
 
 每次 Codex 更新后都建议重新跑一次 **查看当前状态**。
 
@@ -177,9 +180,11 @@ codesign --force --deep --sign - /Applications/Codex.app
 
 **macOS 反复提示想要录制此电脑的屏幕和音频** — apply 和 restore 会在重签名后重置屏幕录制权限记录。请完全退出 `Codex.app`，重新打开，并在系统设置提示中允许“屏幕与系统音频录制”。
 
+**apply 后软件内更新失败** — 旧版 `codexfast` 只会在补丁后做本地 ad-hoc 重签名。对于 `26.506.31421`（`build 2620`）更新到 `26.513.20950`（`build 2816`）这条路径，当前版本还会在重签名前桥接 Sparkle 的 `SUPublicEDKey`。请运行最新的 `npx codexfast apply`，或安装 watcher 让 `repair` 自动执行同样处理。如果 OpenAI 未来再次轮换 Sparkle key，codexfast 还需要新增对应 build 的桥接规则。
+
 **找不到目标文件 / 版本不被支持** — 不要继续，也不要手动改 bundle。当前构建可能需要重新适配。
 
-**Plugins 已可见但某个具体插件仍无法使用** — 请先跑 **查看当前状态**。在 `26.429.20946`、`26.429.30905`、`26.429.61741` 和 `26.506.21252` 上，`Plugin install availability enabled` 表示顶层 connector-unavailable 安装阻断已被 patch，`Plugin install modal content enabled` 表示安装弹窗空详情卡片的 gate 已被 patch；剩余失败通常来自插件状态、connector 运行时行为或管理侧限制。
+**Plugins 已可见但某个具体插件仍无法使用** — 请先跑 **查看当前状态**。在 `26.429.20946`、`26.429.30905`、`26.429.61741`、`26.506.21252`、`26.506.31421` 和 `26.513.20950` 上，`Plugin install availability enabled` 表示顶层 connector-unavailable 安装阻断已被 patch，`Plugin install modal content enabled` 表示安装弹窗空详情卡片的 gate 已被 patch；剩余失败通常来自插件状态、connector 运行时行为或管理侧限制。
 
 **GPT-5.5 已可见但请求失败** — UI 项已经存在，但你的 custom API provider 仍需接受 `model: "gpt-5.5"`。
 

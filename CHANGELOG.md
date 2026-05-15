@@ -6,6 +6,11 @@ This project follows a simple release-oriented changelog format.
 
 ## [Unreleased]
 
+### Added
+
+- Added support for `Codex.app` `26.513.20950` (`build 2816`) after direct installed-bundle inspection confirmed the updated Settings Fast, `/fast`, composer `Intelligence` Speed menu, and Plugins target shapes.
+- Added a Sparkle public EdDSA key bridge for patched `26.506.31421` (`build 2620`) installs so `apply` and watcher `repair` preserve the in-app update path to `26.513.20950` (`build 2816`) after local ad-hoc re-signing.
+
 ### Changed
 
 - Simplified `status`, `apply`, and `restore` output to report feature states and actions without internal target, backup, or temporary file paths.

@@ -20,8 +20,14 @@ Use it when you need a quick answer to "what does this repo actually enable?" be
 
 - Exposes the composer-side `Speed` menu.
 - On `26.415.40636` and `26.417.41555`, this is the `Add files and more / +` Speed submenu.
-- On `26.422.21637`, `26.422.30944`, `26.422.62136`, `26.422.71525`, `26.429.20946`, `26.429.30905`, `26.429.61741`, `26.506.21252`, and `26.506.31421`, this is the composer `Intelligence` dropdown Speed submenu.
+- On `26.422.21637`, `26.422.30944`, `26.422.62136`, `26.422.71525`, `26.429.20946`, `26.429.30905`, `26.429.61741`, `26.506.21252`, `26.506.31421`, and `26.513.20950`, this is the composer `Intelligence` dropdown Speed submenu.
 - On supported builds this menu should surface `Standard` and `Fast`.
+
+### Sparkle in-app update bridge
+
+- On patched `26.506.31421` (`build 2620`) installs, `apply` and watcher `repair` update the app's `SUPublicEDKey` to the public EdDSA key used by `26.513.20950` (`build 2816`) and keep a `SUPublicEDKey.codexfast.bak` backup.
+- This is a build-specific compatibility bridge for Sparkle update validation after local ad-hoc signing. It does not replace Sparkle or guarantee future key rotations without another adaptation.
+- `restore` writes the backed-up key back when the backup exists.
 
 ### Plugins sidebar access for custom API users
 

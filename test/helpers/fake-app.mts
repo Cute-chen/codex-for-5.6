@@ -13,9 +13,17 @@ export type AssetProfile =
   | "26429-2312"
   | "26429-2345"
   | "26506"
-  | "26506-2620";
+  | "26506-2620"
+  | "26513-2816";
 
-export function writeInfoPlist(appDir: string, hashValue: string, appVersion = "26.415.40636", appBuild = "1799", bundleIdentifier: string | null = "com.openai.codex"): void {
+export function writeInfoPlist(
+  appDir: string,
+  hashValue: string,
+  appVersion = "26.415.40636",
+  appBuild = "1799",
+  bundleIdentifier: string | null = "com.openai.codex",
+  sparklePublicEdKey = "rhcBvttuqDFriyNqwTQJR3L4UT1WjIK4QxtwtwusVic=",
+): void {
   mkdirSync(join(appDir, "Contents"), { recursive: true });
   writeFileSync(
     join(appDir, "Contents", "Info.plist"),
@@ -39,6 +47,8 @@ ${bundleIdentifier ? `  <key>CFBundleIdentifier</key>
       <string>${hashValue}</string>
     </dict>
   </dict>
+  <key>SUPublicEDKey</key>
+  <string>${sparklePublicEdKey}</string>
 </dict>
 </plist>
 `,
@@ -49,6 +59,12 @@ export function readInfoPlistHash(appDir: string): string {
   const plist = readFileSync(join(appDir, "Contents", "Info.plist"), "utf8");
   const match = plist.match(/<key>hash<\/key>\s*<string>([^<]+)<\/string>/);
   return match?.[1] ?? fail(`missing ElectronAsarIntegrity hash in ${appDir}`);
+}
+
+export function readInfoPlistSparklePublicEdKey(appDir: string): string {
+  const plist = readFileSync(join(appDir, "Contents", "Info.plist"), "utf8");
+  const match = plist.match(/<key>SUPublicEDKey<\/key>\s*<string>([^<]+)<\/string>/);
+  return match?.[1] ?? fail(`missing SUPublicEDKey in ${appDir}`);
 }
 
 function copyDirectory(sourceDir: string, destinationDir: string): void {

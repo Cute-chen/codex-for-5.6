@@ -16,6 +16,7 @@ const appResources = join(appBundle, "Contents", "Resources");
 const appInfoPlist = join(appBundle, "Contents", "Info.plist");
 const appAsar = join(appResources, "app.asar");
 const appAsarBackup = join(appResources, "app.asar1");
+const sparklePublicEdKeyBackup = join(appResources, "SUPublicEDKey.codexfast.bak");
 const backupSuffix = ".codexfast.bak";
 const legacyBackupSuffix = ".speed-setting.bak";
 const asarPackage = "@electron/asar@3.4.1";
@@ -23,6 +24,9 @@ const staleArchiveTempFileMs = 10 * 60 * 1000;
 const supportedAppVersionKeys = Object.keys(SUPPORTED_APP_VERSIONS).join(", ");
 const launchAgentLabel = "com.codexfast.watcher";
 const launchAgentFileName = `${launchAgentLabel}.plist`;
+const SPARKLE_PUBLIC_ED_KEY_BRIDGES: Record<string, string> = {
+  "26.506.31421+2620": "mNfr1v9t63BfgDtlw4C8lRvSY6uMggIXABDOCi3tS6k=",
+};
 
 let tempRoot = "";
 let tempAppDir = "";
@@ -54,6 +58,11 @@ type PatcherRun = {
 type ApplySummary = {
   changed: number;
   alreadyPatched: number;
+};
+
+type MetadataChangeResult = {
+  changed: boolean;
+  ok: boolean;
 };
 
 function printLine(message = ""): void {
@@ -185,6 +194,79 @@ function writeAsarIntegrityHash(hash: string, options: { failureMessage?: string
     return false;
   }
   return true;
+}
+
+function readSparklePublicEdKey(): string {
+  return readBundlePlistValue("SUPublicEDKey", "");
+}
+
+function writeSparklePublicEdKey(value: string): boolean {
+  const setResult = run(plistBuddyBin, ["-c", `Set :SUPublicEDKey ${value}`, appInfoPlist]);
+  if (setResult.status !== 0) {
+    const addResult = run(plistBuddyBin, ["-c", `Add :SUPublicEDKey string ${value}`, appInfoPlist]);
+    if (addResult.status !== 0) {
+      return false;
+    }
+  }
+  return readSparklePublicEdKey() === value;
+}
+
+function syncSparklePublicEdKeyForInAppUpdates(): MetadataChangeResult {
+  const targetKey = SPARKLE_PUBLIC_ED_KEY_BRIDGES[appVersionKey];
+  if (!targetKey) {
+    return { changed: false, ok: true };
+  }
+
+  const currentKey = readSparklePublicEdKey();
+  if (currentKey === targetKey) {
+    return { changed: false, ok: true };
+  }
+
+  try {
+    if (!existsSync(sparklePublicEdKeyBackup)) {
+      writeFileSync(sparklePublicEdKeyBackup, currentKey, "utf8");
+    }
+  } catch {
+    printLine("Failed to back up the Sparkle public EdDSA key.");
+    return { changed: false, ok: false };
+  }
+
+  if (!writeSparklePublicEdKey(targetKey)) {
+    printLine("Failed to update the Sparkle public EdDSA key for in-app updates.");
+    return { changed: false, ok: false };
+  }
+
+  printLine("Updated Sparkle public EdDSA key for in-app updates.");
+  return { changed: true, ok: true };
+}
+
+function restoreSparklePublicEdKeyBackup(): MetadataChangeResult {
+  if (!existsSync(sparklePublicEdKeyBackup)) {
+    return { changed: false, ok: true };
+  }
+
+  let originalKey = "";
+  try {
+    originalKey = readFileSync(sparklePublicEdKeyBackup, "utf8").trim();
+  } catch {
+    printLine("Failed to read the Sparkle public EdDSA key backup.");
+    return { changed: false, ok: false };
+  }
+
+  if (!writeSparklePublicEdKey(originalKey)) {
+    printLine("Failed to restore the Sparkle public EdDSA key backup.");
+    return { changed: false, ok: false };
+  }
+
+  try {
+    rmSync(sparklePublicEdKeyBackup, { force: true });
+  } catch {
+    printLine("Failed to remove the Sparkle public EdDSA key backup.");
+    return { changed: true, ok: false };
+  }
+
+  printLine("Restored Sparkle public EdDSA key backup.");
+  return { changed: true, ok: true };
 }
 
 function calculateAsarHeaderHash(archivePath = appAsar): string | null {
@@ -407,6 +489,10 @@ function restoreFromArchiveBackup(): boolean {
     if (!commitArchiveWithIntegrity(appAsarBackup, snapshot)) {
       return false;
     }
+    const metadataChange = restoreSparklePublicEdKeyBackup();
+    if (!metadataChange.ok) {
+      return false;
+    }
     if (!resignAppBundle("Original archive was restored. Re-signing now.")) {
       return false;
     }
@@ -605,6 +691,12 @@ function finalizeModifiedArchive(action: string): boolean {
   if (!commitArchiveWithIntegrity(tempAsar, snapshot)) {
     return false;
   }
+  if (action === "apply" || action === "repair") {
+    const metadataChange = syncSparklePublicEdKeyForInAppUpdates();
+    if (!metadataChange.ok) {
+      return false;
+    }
+  }
   if (!resignAppBundle("Codex.app resources were modified. Re-signing now.")) {
     return false;
   }
@@ -656,7 +748,18 @@ function runEmbeddedTool(action: string): number {
     if (action === "apply" || action === "repair") {
       const summary = parseApplySummary(patcherRun.stdout);
       if (summary && summary.changed === 0) {
-        printLine("No patch changes were needed; leaving app.asar and signature untouched.");
+        const metadataChange = syncSparklePublicEdKeyForInAppUpdates();
+        if (!metadataChange.ok) {
+          exitCode = 1;
+        } else if (metadataChange.changed) {
+          if (!resignAppBundle("Codex.app metadata was modified. Re-signing now.")) {
+            exitCode = 1;
+          } else {
+            resetScreenRecordingPermission();
+          }
+        } else {
+          printLine("No patch changes were needed; leaving app.asar and signature untouched.");
+        }
       } else if (!finalizeModifiedArchive(action)) {
         exitCode = 1;
       }
