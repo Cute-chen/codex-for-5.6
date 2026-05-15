@@ -66,10 +66,9 @@ Check:
 
 Relevant boundary:
 
-- Current `codexfast` includes a narrow compatibility target named `Browser-use native pipe peer auth`.
-- The patch only allows the `missing-code-signing-identity` peer-auth rejection.
-- It does not disable every native pipe peer check, and other peer-auth failures remain rejected.
-- This lowers local native pipe peer verification strength for that one compatibility reason.
+- Current public `codexfast launch` keeps the official app bundle and signature untouched.
+- It no longer includes the old native pipe peer-auth compatibility patch from the legacy bundle-patch path.
+- If this error appears because the installed app was modified and locally ad-hoc signed by an older codexfast run, runtime launch cannot recover the original OpenAI Developer ID signature.
 
 Recovery:
 

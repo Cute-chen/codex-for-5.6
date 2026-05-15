@@ -28,7 +28,7 @@ import {
   assertGuardedState26506Build2620,
   assertGuardedState26513Build2816,
 } from "./helpers/patch-state-assertions.mts";
-import { assertCodesignCallContains as assertCodesignCallContainsHelper, assertCodesignCalls as assertCodesignCallsHelper, assertLaunchctlCallContains as assertLaunchctlCallContainsHelper, assertNoCodesignCalls as assertNoCodesignCallsHelper, assertNoLaunchCalls as assertNoLaunchCallsHelper, assertNoNpmCalls as assertNoNpmCallsHelper, assertNoTccutilCalls as assertNoTccutilCallsHelper, assertNpmCallContains as assertNpmCallContainsHelper, assertTccutilCallContains as assertTccutilCallContainsHelper, readOutput, resetCodesignCalls as resetCodesignCallsHelper, resetNpmCalls as resetNpmCallsHelper, resetTccutilCalls as resetTccutilCallsHelper, runScript as runScriptHelper, setupStubs as setupStubsHelper } from "./helpers/script-harness.mts";
+import { assertCodesignCallContains as assertCodesignCallContainsHelper, assertCodesignCalls as assertCodesignCallsHelper, assertLaunchctlCallContains as assertLaunchctlCallContainsHelper, assertNoCodesignCalls as assertNoCodesignCallsHelper, assertNoLaunchCalls as assertNoLaunchCallsHelper, assertNoNpmCalls as assertNoNpmCallsHelper, assertNoTccutilCalls as assertNoTccutilCallsHelper, assertNpmCallContains as assertNpmCallContainsHelper, readOutput, resetCodesignCalls as resetCodesignCallsHelper, resetNpmCalls as resetNpmCallsHelper, resetTccutilCalls as resetTccutilCallsHelper, runScript as runScriptHelper, setupStubs as setupStubsHelper } from "./helpers/script-harness.mts";
 import { applyRuntimePatchesToBody } from "../src/patch-engine.mts";
 import { TARGET_SPECS } from "../src/patcher-targets.mts";
 
@@ -103,10 +103,6 @@ function assertNoCodesignCalls(outputFile: string): void {
 
 function resetCodesignCalls(): void {
   resetCodesignCallsHelper(markerFile);
-}
-
-function assertTccutilCallContains(expected: string, outputFile: string): void {
-  assertTccutilCallContainsHelper(expected, markerFile, outputFile);
 }
 
 function assertNoTccutilCalls(outputFile: string): void {
@@ -184,6 +180,10 @@ function assertGeneratedCliRuntimeRequirements(): void {
   assertContains(generatedCli, "runtimePatchReconnectMaxAttempts = 3", "expected generated CLI to bound runtime launch reconnect attempts");
   assertContains(generatedCli, '"Page.getFrameTree"', "expected generated CLI to heartbeat the CDP runtime patch session");
   assertContains(generatedCli, "Runtime patch session lost after", "expected generated CLI to report exhausted runtime patch reconnects clearly");
+  assertNotContains(generatedCli, "tccutil", "expected generated CLI not to reset macOS ScreenCapture permissions");
+  assertNotContains(generatedCli, "ScreenCapture", "expected generated CLI not to contain ScreenCapture reset logic");
+  assertNotContains(generatedCli, "codexfast-browser-peer-auth", "expected generated CLI not to contain browser-use native pipe peer-auth compatibility patch");
+  assertNotContains(generatedCli, "missing-code-signing-identity", "expected generated CLI not to authorize missing-code-signing-identity peer-auth failures");
   assertNotContains(generatedCli, "__SUPPORTED_APP_VERSIONS__", "expected generated CLI to inline supported app versions without placeholder names");
 }
 
@@ -193,13 +193,25 @@ function assertPatcherTargetsRuntimeImportable(): void {
     "speed-setting",
     "expected patcher target specs to be importable at runtime",
   );
+  assertNotContains(
+    TARGET_SPECS.map((spec) => spec.id).join("\n"),
+    "browser-use-native-pipe-peer-auth",
+    "expected browser-use native pipe peer-auth compatibility target to be removed",
+  );
 }
 
 function assertRuntimePatchEnginePatchesBody(): void {
-  const body = "function dP(){return lP().info(`browser-use native pipe peer authorization enabled`,{safe:{mode:a?`dev`:`packaged`},sensitive:{}}),e=>{let t=fP(e);return t==null?{authorized:!1,reason:`missing-socket-file-descriptor`}:s.authorizeSocketPeer(t,a)}}";
-  const result = applyRuntimePatchesToBody("webview/assets/browser-use-native-pipe-Demo.js", body);
-  assertContains(result.content, "codexfast-browser-peer-auth", "expected runtime patch engine to patch matching JS body");
-  assertContains(result.patchedLabels.join("\n"), "Browser-use native pipe peer auth", "expected runtime patch engine to report patched target label");
+  const speedBody = "settings.agent.speed.label;n=se(),{serviceTierSettings:r,setServiceTier:i}=fe();if(!n)return null;let o;";
+  const speedResult = applyRuntimePatchesToBody("webview/assets/general-settings-demo.js", speedBody);
+  assertContains(speedResult.content, "{serviceTierSettings:r,setServiceTier:i}=fe();let o;", "expected runtime patch engine to keep patching matching Speed settings bodies");
+  assertContains(speedResult.patchedLabels.join("\n"), "Speed setting", "expected runtime patch engine to report patched Speed setting target");
+
+  const nativePipeBody = "function dP(){return lP().info(`browser-use native pipe peer authorization enabled`,{safe:{mode:a?`dev`:`packaged`},sensitive:{}}),e=>{let t=fP(e);return t==null?{authorized:!1,reason:`missing-socket-file-descriptor`}:s.authorizeSocketPeer(t,a)}}";
+  const nativePipeResult = applyRuntimePatchesToBody("webview/assets/browser-use-native-pipe-Demo.js", nativePipeBody);
+  if (nativePipeResult.content !== nativePipeBody) {
+    fail("expected runtime patch engine to leave browser-use native pipe peer auth unchanged", nativePipeResult.content);
+  }
+  assertNotContains(nativePipeResult.patchedLabels.join("\n"), "Browser-use native pipe peer auth", "expected runtime patch engine not to report removed native pipe target");
 }
 
 function renameBackupSuffixes(dir: string, fromSuffix: string, toSuffix: string): void {
@@ -238,8 +250,8 @@ function runApplyRestoreCase(caseConfig: {
   runLegacyTool(caseConfig.appDir, "apply", applyOutput);
   assertNpmCallContains("--package @electron/asar@3.4.1", applyOutput);
   assertCodesignCalls(1, applyOutput);
-  assertTccutilCallContains("reset ScreenCapture com.openai.codex", applyOutput);
-  assertContains(readOutput(applyOutput), "Reset macOS screen recording permission for com.openai.codex.", "expected apply to report TCC reset", readOutput(applyOutput));
+  assertNoTccutilCalls(applyOutput);
+  assertNotContains(readOutput(applyOutput), "Reset macOS screen recording permission", "expected apply not to reset macOS ScreenCapture permissions", readOutput(applyOutput));
   assertNoPersistentUnpackDir(resourcesDir, applyOutput);
   assertFakeAsarJsParses(archivePath);
   caseConfig.applyAssert(archivePath);
@@ -255,8 +267,8 @@ function runApplyRestoreCase(caseConfig: {
 
   runLegacyTool(caseConfig.appDir, "restore", restoreOutput);
   assertCodesignCalls(1, restoreOutput);
-  assertTccutilCallContains("reset ScreenCapture com.openai.codex", restoreOutput);
-  assertContains(readOutput(restoreOutput), "Reset macOS screen recording permission for com.openai.codex.", "expected restore to report TCC reset", readOutput(restoreOutput));
+  assertNoTccutilCalls(restoreOutput);
+  assertNotContains(readOutput(restoreOutput), "Reset macOS screen recording permission", "expected restore not to reset macOS ScreenCapture permissions", readOutput(restoreOutput));
   assertNoPersistentUnpackDir(resourcesDir, restoreOutput);
   assertFakeAsarJsParses(archivePath);
   caseConfig.restoreAssert(archivePath, caseConfig.restoreContext);
@@ -375,7 +387,7 @@ function main(): void {
   });
   assertContains(readOutput(launchSuccessOutput), "Runtime launch completed.", "expected launch command to report success", readOutput(launchSuccessOutput));
   assertContains(readOutput(launchSuccessOutput), "Keep this codexfast launch process running while you use Codex.", "expected launch command to describe the foreground runtime session", readOutput(launchSuccessOutput));
-  assertContains(readOutput(launchSuccessOutput), "Browser-use native pipe peer auth", "expected launch dry-run hook to report runtime target labels", readOutput(launchSuccessOutput));
+  assertNotContains(readOutput(launchSuccessOutput), "Browser-use native pipe peer auth", "expected launch dry-run hook not to report removed native pipe target", readOutput(launchSuccessOutput));
   assertNoCodesignCalls(launchSuccessOutput);
   assertNoTccutilCalls(launchSuccessOutput);
 
@@ -401,7 +413,7 @@ function main(): void {
   });
   assertContains(readOutput(menuLaunchSuccessOutput), "Runtime launch completed.", "expected menu launch option to report success", readOutput(menuLaunchSuccessOutput));
   assertContains(readOutput(menuLaunchSuccessOutput), "Keep this codexfast launch process running while you use Codex.", "expected menu launch option to describe the foreground runtime session", readOutput(menuLaunchSuccessOutput));
-  assertContains(readOutput(menuLaunchSuccessOutput), "Browser-use native pipe peer auth", "expected menu launch option to report runtime target labels", readOutput(menuLaunchSuccessOutput));
+  assertNotContains(readOutput(menuLaunchSuccessOutput), "Browser-use native pipe peer auth", "expected menu launch option not to report removed native pipe target", readOutput(menuLaunchSuccessOutput));
   assertNoCodesignCalls(menuLaunchSuccessOutput);
   assertNoTccutilCalls(menuLaunchSuccessOutput);
 
@@ -693,7 +705,7 @@ function main(): void {
       assertContains(output, "Status: Plugin install availability enabled", "expected 26.513 build 2816 status to report Plugin install availability after apply", output);
       assertContains(output, "Status: Plugin install modal content enabled", "expected 26.513 build 2816 status to report Plugin install modal content after apply", output);
       assertContains(output, "Status: Composer plugin mentions enabled", "expected 26.513 build 2816 status to report Composer plugin mentions after apply", output);
-      assertContains(output, "Status: Browser-use native pipe peer auth enabled", "expected 26.513 build 2816 status to report browser-use native pipe peer auth after apply", output);
+      assertNotContains(output, "Browser-use native pipe peer auth", "expected 26.513 build 2816 status to omit removed browser-use native pipe target", output);
       assertNotContains(output, "Target file:", "expected 26.513 build 2816 status to omit internal target paths", output);
       assertNotContains(output, "Backup file:", "expected 26.513 build 2816 status to omit internal backup paths", output);
       assertNotContains(output, "GPT-5.5 model", "expected 26.513 build 2816 status to omit unpatched GPT-5.5 compatibility targets", output);
@@ -790,7 +802,7 @@ function main(): void {
   resetNativeToolCalls();
   runLegacyTool(idempotentRepairApp, "repair", repairFirstOutput);
   assertCodesignCalls(1, repairFirstOutput);
-  assertTccutilCallContains("reset ScreenCapture com.openai.codex", repairFirstOutput);
+  assertNoTccutilCalls(repairFirstOutput);
   assertApplyState26429Build2345(idempotentRepairArchive);
   assertIntegrityMatches(idempotentRepairApp, idempotentRepairArchive, "expected first repair to update ElectronAsarIntegrity");
   const repairedArchive = readFileSync(idempotentRepairArchive);
@@ -1073,18 +1085,6 @@ function main(): void {
   }
   assertContains(readOutput(restoreIntegrityOutput), "ElectronAsarIntegrity hash verification failed after updating Info.plist.", "expected restore integrity failure to be reported", readOutput(restoreIntegrityOutput));
   assertContains(readOutput(restoreIntegrityOutput), "Exit code: 1", "expected failed restore integrity update to return exit code 1", readOutput(restoreIntegrityOutput));
-  resetCodesignCalls();
-
-  const missingBundleIdApp = join(tmpDir, "MissingBundleId.app");
-  const missingBundleIdResources = join(missingBundleIdApp, "Contents", "Resources");
-  const missingBundleIdArchive = join(missingBundleIdResources, "app.asar");
-  const missingBundleIdOutput = join(tmpDir, "missing-bundle-id-output.txt");
-  prepareArchivedFakeApp(missingBundleIdApp, join(tmpDir, "missing-bundle-id-assets"));
-  writeInfoPlist(missingBundleIdApp, readFakeAsarHeaderHash(missingBundleIdArchive), "26.415.40636", "1799", null);
-  resetTccutilCalls();
-  runLegacyTool(missingBundleIdApp, "apply", missingBundleIdOutput);
-  assertNoTccutilCalls(missingBundleIdOutput);
-  assertContains(readOutput(missingBundleIdOutput), "Could not reset macOS screen recording permission because CFBundleIdentifier was not found.", "expected missing bundle id to skip TCC reset", readOutput(missingBundleIdOutput));
   resetCodesignCalls();
 
   const unsupportedApp = join(tmpDir, "Unsupported.app");

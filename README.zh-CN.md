@@ -11,7 +11,6 @@
 - composer 里的 **Speed** 菜单
 - 仍需要兼容补丁的版本上的 **GPT-5.5** 模型列表显示
 - custom API 用户的 **Plugins** 入口
-- `missing-code-signing-identity` 场景下的 browser-use native pipe 兼容
 
 ```bash
 npx codexfast launch
@@ -75,7 +74,6 @@ q) Quit
 - Runtime launch 不会改写 `app.asar`、`Info.plist`、app bundle、备份、app 签名或 macOS 隐私权限
 - GPT-5.5 模型列表补丁只在仍需要兼容补丁的受支持版本上注入 UI catalog 项；你的 custom API provider 仍然必须支持 `gpt-5.5`
 - Plugins patch 只移除已知的 custom API 本地 gate；具体 plugin 行为仍可能受 plugin 状态、connector runtime 或管理员限制影响
-- Browser-use native pipe 兼容只处理 `missing-code-signing-identity`，不会禁用全部 peer-auth 校验
 
 ## 排查
 

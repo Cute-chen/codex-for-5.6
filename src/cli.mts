@@ -45,7 +45,6 @@ let npmBin = "";
 let npxBin = "";
 let codesignBin = "";
 let plistBuddyBin = "";
-let tccutilBin = "";
 
 type ArchiveSnapshot = {
   archivePath: string | null;
@@ -997,7 +996,6 @@ function restoreFromArchiveBackup(): boolean {
     if (!resignAppBundle("Original archive was restored. Re-signing now.")) {
       return false;
     }
-    resetScreenRecordingPermission();
     return true;
   } finally {
     cleanupTempWorkspace();
@@ -1056,33 +1054,6 @@ function resignAppBundle(reason: string): boolean {
   return true;
 }
 
-function resetScreenRecordingPermission(): void {
-  const bundleIdentifier = readBundlePlistValue("CFBundleIdentifier", "");
-  if (!bundleIdentifier) {
-    printLine("Could not reset macOS screen recording permission because CFBundleIdentifier was not found.");
-    return;
-  }
-
-  const manualCommand = `tccutil reset ScreenCapture ${bundleIdentifier}`;
-  if (!tccutilBin) {
-    printLine("Could not reset macOS screen recording permission because tccutil was not found.");
-    printLine(`Run manually if Codex keeps asking for screen recording permission: ${manualCommand}`);
-    return;
-  }
-
-  const result = run(tccutilBin, ["reset", "ScreenCapture", bundleIdentifier]);
-  if (result.status !== 0) {
-    process.stdout.write(result.stdout);
-    process.stderr.write(result.stderr);
-    printLine("Failed to reset macOS screen recording permission.");
-    printLine(`Run manually if Codex keeps asking for screen recording permission: ${manualCommand}`);
-    return;
-  }
-
-  printLine(`Reset macOS screen recording permission for ${bundleIdentifier}.`);
-  printLine("Open Codex.app again and allow Screen & System Audio Recording when prompted.");
-}
-
 function checkRequirements(options: { command?: string } = {}): boolean {
   if (!existsSync(appResources)) {
     printLine(`Codex resources directory not found: ${appResources}`);
@@ -1110,7 +1081,6 @@ function checkRequirements(options: { command?: string } = {}): boolean {
   npmBin = resolveCommand("npm") ?? "";
   npxBin = resolveCommand("npx") ?? "";
   codesignBin = resolveCommand("codesign") ?? "";
-  tccutilBin = resolveCommand("tccutil") ?? "";
 
   if (!npmBin) {
     printLine("npm not found.");
@@ -1244,9 +1214,6 @@ function finalizeModifiedArchive(action: string): boolean {
   if (!resignAppBundle("Codex.app resources were modified. Re-signing now.")) {
     return false;
   }
-  if (action === "apply" || action === "repair" || action === "restore") {
-    resetScreenRecordingPermission();
-  }
   return true;
 }
 
@@ -1301,8 +1268,6 @@ function runEmbeddedTool(action: string): number {
         } else if (metadataChange.changed) {
           if (!resignAppBundle("Codex.app metadata was modified. Re-signing now.")) {
             exitCode = 1;
-          } else {
-            resetScreenRecordingPermission();
           }
         } else {
           printLine("No patch changes were needed; leaving app.asar and signature untouched.");
@@ -1451,16 +1416,16 @@ function runRuntimeUrlSelfTest(): number {
 }
 
 function runRuntimePatchBodySelfTest(): number {
-  const body = "function dP(){return lP().info(`browser-use native pipe peer authorization enabled`,{safe:{mode:a?`dev`:`packaged`},sensitive:{}}),e=>{let t=fP(e);return t==null?{authorized:!1,reason:`missing-socket-file-descriptor`}:s.authorizeSocketPeer(t,a)}}";
+  const body = "settings.agent.speed.label;n=se(),{serviceTierSettings:r,setServiceTier:i}=fe();if(!n)return null;let o;";
   let result: RuntimePatchResult;
   try {
-    result = applyRuntimePatchesToResponseBody("app://-/assets/browser-use-native-pipe-Demo.js", body);
+    result = applyRuntimePatchesToResponseBody("app://-/assets/general-settings-demo.js", body);
   } catch (error) {
     printLine(`Runtime patch body self-test failed: ${asError(error).message}`);
     return 1;
   }
 
-  if (!result.content.includes("codexfast-browser-peer-auth") || !result.patchedLabels.includes("Browser-use native pipe peer auth")) {
+  if (!result.content.includes("{serviceTierSettings:r,setServiceTier:i}=fe();let o;") || !result.patchedLabels.includes("Speed setting")) {
     printLine("Runtime patch body self-test failed");
     return 1;
   }
@@ -1949,7 +1914,7 @@ async function runRuntimeLaunch(): Promise<number> {
     printLine("Keep this codexfast launch process running while you use Codex.");
     printLine("Quit Codex to end the runtime patch session.");
     printLine("Patched targets:");
-    printLine("  Browser-use native pipe peer auth");
+    printLine("  Speed setting");
     printLine("");
     if (process.env.CODEXFAST_TEST_RUNTIME_LAUNCH_SESSION_LOST === "1") {
       printLine(runtimePatchSessionLostMessage(new Error("simulated CDP heartbeat failure")));

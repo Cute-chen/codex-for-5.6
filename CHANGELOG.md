@@ -6,6 +6,11 @@ This project follows a simple release-oriented changelog format.
 
 ## [Unreleased]
 
+### Removed
+
+- Removed macOS ScreenCapture permission reset logic; current public launch does not re-sign the app.
+- Removed the browser-use native pipe peer-auth compatibility target from the current implementation. Users with old locally ad-hoc signed apps should reinstall official Codex.app to recover the OpenAI Developer ID signature.
+
 ## [0.16.0] - 2026-05-15
 
 ### Added

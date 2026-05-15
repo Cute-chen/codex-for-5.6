@@ -11,7 +11,6 @@
 - **Speed submenu** in the composer
 - **GPT-5.5** model-list compatibility for custom-API users where the supported build still needs it
 - **Plugins access** for custom-API users
-- **Browser-use native pipe compatibility** for the `missing-code-signing-identity` peer-auth case
 
 ```bash
 npx codexfast launch
@@ -75,7 +74,6 @@ The script matches code signatures in frontend build output, so it can break aft
 - Runtime launch does not rewrite `app.asar`, `Info.plist`, the app bundle, backups, the app signature, or macOS privacy permissions
 - The GPT-5.5 model-list patch only injects the UI catalog entry on supported builds that still need it. Your configured provider must still support `gpt-5.5`
 - For Plugins, the script removes the custom-API gates needed to open the Plugins sidebar/page path on supported builds. Actual plugin behavior can still depend on plugin state, connector runtime behavior, or admin restrictions
-- Browser-use native pipe compatibility only handles `missing-code-signing-identity`; it does not disable all peer-auth checks
 
 ## Troubleshooting
 
