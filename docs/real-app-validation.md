@@ -12,6 +12,7 @@ Use these checks when validating `launch` behavior. Do not mark a build as real-
 - The launched session opens with runtime patches active
 - The launch output reports the expected patched target labels for the current build
 - The `codexfast launch` process remains running while the launched Codex session is open
+- The runtime patch session heartbeat stays quiet during normal use, and no `Runtime patch session lost` message appears
 - With the launch process still running, opening Settings activates the Settings-side Fast control even if the Settings chunk loads after the initial window
 - With the launch process still running, opening Plugins shows plugin page content even if the Plugins chunk loads after the initial window
 - `app.asar`, `Info.plist`, and the app code signature are unchanged after launch exits

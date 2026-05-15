@@ -101,6 +101,10 @@ const runtimePatchSessionTimeoutMs = 12_000;
 const runtimePatchSettleMs = 750;
 const runtimePatchHttpTimeoutMs = 3_000;
 const runtimePatchInitialLoadSettleMs = 1_000;
+const runtimePatchHeartbeatIntervalMs = 5_000;
+const runtimePatchHeartbeatTimeoutMs = 2_000;
+const runtimePatchReconnectMaxAttempts = 3;
+const runtimePatchReconnectDelayMs = 1_000;
 function printLine(message = "") {
     console.log(message);
 }
@@ -346,15 +350,18 @@ class CdpConnection {
     eventErrorHandlers = [];
     buffer = Buffer.alloc(0);
     textFrameFragments = [];
+    closed = false;
     constructor(socket, initialBuffer = Buffer.alloc(0)) {
         this.socket = socket;
         this.socket.on("data", (chunk) => {
             this.readFrames(chunk);
         });
         this.socket.on("error", (error) => {
+            this.closed = true;
             this.rejectPending(error);
         });
         this.socket.on("close", () => {
+            this.closed = true;
             this.rejectPending(new Error("CDP WebSocket connection closed."));
         });
         if (initialBuffer.length > 0) {
@@ -436,6 +443,9 @@ class CdpConnection {
         });
     }
     send(method, params) {
+        if (this.closed || this.socket.destroyed) {
+            return Promise.reject(new Error("CDP WebSocket connection closed."));
+        }
         const id = this.nextCommandId;
         this.nextCommandId += 1;
         const payload = params === undefined ? JSON.stringify({ id, method }) : JSON.stringify({ id, method, params });
@@ -444,7 +454,13 @@ class CdpConnection {
                 resolve: (value) => resolve(value),
                 reject,
             });
-            this.socket.write(encodeWebSocketTextFrame(payload));
+            try {
+                this.socket.write(encodeWebSocketTextFrame(payload));
+            }
+            catch (error) {
+                this.pending.delete(id);
+                reject(asError(error));
+            }
         });
     }
     on(method, handler) {
@@ -456,8 +472,13 @@ class CdpConnection {
         this.eventErrorHandlers.push(handler);
     }
     close() {
+        this.closed = true;
         this.socket.end();
         this.socket.destroy();
+        this.rejectPending(new Error("CDP WebSocket connection closed."));
+    }
+    isClosed() {
+        return this.closed || this.socket.destroyed;
     }
     readFrames(chunk) {
         this.buffer = Buffer.concat([this.buffer, chunk]);
@@ -1377,31 +1398,199 @@ async function waitForRuntimePatchConnection(debugPort) {
     const detail = lastError ? `: ${lastError.message}` : "";
     throw new Error(`CDP connection unavailable after bounded retries${detail}`);
 }
+function cdpCommandWithTimeout(command, timeoutMs, timeoutMessage) {
+    return new Promise((resolve, reject) => {
+        let settled = false;
+        const timeout = setTimeout(() => {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            reject(new Error(timeoutMessage));
+        }, timeoutMs);
+        command.then((value) => {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            clearTimeout(timeout);
+            resolve(value);
+        }, (error) => {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            clearTimeout(timeout);
+            reject(asError(error));
+        });
+    });
+}
+function runtimePatchSessionLostMessage(error) {
+    return `Runtime patch session lost after ${runtimePatchReconnectMaxAttempts} reconnect attempts: ${error.message}`;
+}
+function waitForRuntimeInitialPageLoad(cdp) {
+    return new Promise((resolve) => {
+        let settled = false;
+        let timeout = null;
+        const resolveOnce = () => {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            if (timeout) {
+                clearTimeout(timeout);
+            }
+            resolve();
+        };
+        timeout = setTimeout(resolveOnce, runtimePatchInitialLoadSettleMs);
+        cdp.on("Page.loadEventFired", resolveOnce);
+        cdp.on("Page.frameStoppedLoading", resolveOnce);
+    });
+}
+async function enableRuntimePatchInterception(cdp, options) {
+    await cdp.send("Page.enable");
+    debugRuntime("Page.enable ok");
+    if (options.waitForInitialLoad) {
+        await waitForRuntimeInitialPageLoad(cdp);
+        debugRuntime("initial page load settled");
+    }
+    await cdp.send("Fetch.enable", {
+        patterns: [
+            {
+                urlPattern: "app://*/assets/*.js",
+                requestStage: "Response",
+            },
+            {
+                urlPattern: "app://*/webview/assets/*.js",
+                requestStage: "Response",
+            },
+        ],
+    });
+    debugRuntime("Fetch.enable ok");
+    if (options.reload) {
+        await cdp.send("Page.reload", { ignoreCache: true });
+        debugRuntime("Page.reload ok");
+    }
+}
 async function startRuntimePatchSession(debugPort) {
-    const cdp = await waitForRuntimePatchConnection(debugPort);
+    let cdp = await waitForRuntimePatchConnection(debugPort);
     const observedLabels = new Set();
     const pausedRequestHandlers = new Set();
     let settleTimer = null;
     let failSession = () => undefined;
     let keepSessionOpen = false;
-    try {
-        const waitForInitialPageLoad = new Promise((resolve) => {
-            let settled = false;
-            let timeout = null;
-            const resolveOnce = () => {
-                if (settled) {
-                    return;
-                }
-                settled = true;
-                if (timeout) {
-                    clearTimeout(timeout);
-                }
-                resolve();
-            };
-            timeout = setTimeout(resolveOnce, runtimePatchInitialLoadSettleMs);
-            cdp.on("Page.loadEventFired", resolveOnce);
-            cdp.on("Page.frameStoppedLoading", resolveOnce);
+    let initialCompleted = false;
+    let closed = false;
+    let reconnecting = false;
+    let connectionGeneration = 0;
+    let heartbeatTimer = null;
+    let resolveLost = () => undefined;
+    let markInitialObserved = () => undefined;
+    const lost = new Promise((resolve) => {
+        resolveLost = resolve;
+    });
+    const stopHeartbeat = () => {
+        if (heartbeatTimer) {
+            clearInterval(heartbeatTimer);
+            heartbeatTimer = null;
+        }
+    };
+    const markSessionLost = (error) => {
+        if (closed) {
+            return;
+        }
+        closed = true;
+        stopHeartbeat();
+        cdp.close();
+        resolveLost(error);
+    };
+    const reconnectRuntimePatchSession = async (reason) => {
+        if (closed || reconnecting) {
+            return;
+        }
+        reconnecting = true;
+        cdp.close();
+        let lastError = reason;
+        for (let attempt = 1; attempt <= runtimePatchReconnectMaxAttempts; attempt += 1) {
+            if (closed) {
+                reconnecting = false;
+                return;
+            }
+            if (attempt > 1) {
+                await sleep(runtimePatchReconnectDelayMs);
+            }
+            printLine(`Runtime patch session reconnecting (${attempt}/${runtimePatchReconnectMaxAttempts})...`);
+            try {
+                const nextCdp = await waitForRuntimePatchConnection(debugPort);
+                connectionGeneration += 1;
+                cdp = nextCdp;
+                registerRuntimeFetchHandler(connectionGeneration);
+                await enableRuntimePatchInterception(cdp, { waitForInitialLoad: false, reload: true });
+                printLine("Runtime patch session reconnected.");
+                reconnecting = false;
+                return;
+            }
+            catch (error) {
+                lastError = asError(error);
+                cdp.close();
+            }
+        }
+        reconnecting = false;
+        markSessionLost(new Error(runtimePatchSessionLostMessage(lastError)));
+    };
+    const handleConnectionFailure = (generation, error) => {
+        if (closed || generation !== connectionGeneration) {
+            return;
+        }
+        if (!initialCompleted) {
+            failSession(error);
+            return;
+        }
+        void reconnectRuntimePatchSession(error);
+    };
+    const registerRuntimeFetchHandler = (generation) => {
+        const attachedCdp = cdp;
+        attachedCdp.onEventError((error) => {
+            handleConnectionFailure(generation, error);
         });
+        attachedCdp.on("Fetch.requestPaused", (params) => {
+            const task = handleFetchRequestPaused(attachedCdp, params)
+                .then((labels) => {
+                let sawNewLabel = false;
+                for (const label of labels) {
+                    if (!observedLabels.has(label)) {
+                        sawNewLabel = true;
+                    }
+                    observedLabels.add(label);
+                }
+                if (!initialCompleted && labels.length > 0) {
+                    markInitialObserved();
+                }
+                if (initialCompleted && sawNewLabel) {
+                    debugRuntime(`patched labels now active: ${[...observedLabels].join(", ")}`);
+                }
+            });
+            pausedRequestHandlers.add(task);
+            task.then(() => pausedRequestHandlers.delete(task), () => pausedRequestHandlers.delete(task));
+            return task;
+        });
+    };
+    const startHeartbeat = () => {
+        heartbeatTimer = setInterval(() => {
+            if (closed || reconnecting) {
+                return;
+            }
+            if (cdp.isClosed()) {
+                void reconnectRuntimePatchSession(new Error("CDP WebSocket connection closed."));
+                return;
+            }
+            void cdpCommandWithTimeout(cdp.send("Page.getFrameTree"), runtimePatchHeartbeatTimeoutMs, "Timed out waiting for CDP heartbeat.")
+                .catch((error) => {
+                void reconnectRuntimePatchSession(asError(error));
+            });
+        }, runtimePatchHeartbeatIntervalMs);
+    };
+    try {
         const initialSession = new Promise((resolve, reject) => {
             let timeout = null;
             let completed = false;
@@ -1449,6 +1638,7 @@ async function startRuntimePatchSession(debugPort) {
                         return;
                     }
                     completed = true;
+                    initialCompleted = true;
                     resolve([...observedLabels]);
                 })();
             };
@@ -1458,64 +1648,34 @@ async function startRuntimePatchSession(debugPort) {
                 }
                 settleTimer = setTimeout(finish, runtimePatchSettleMs);
             };
+            markInitialObserved = markObserved;
             timeout = setTimeout(finish, runtimePatchSessionTimeoutMs);
-            cdp.onEventError(fail);
-            cdp.on("Fetch.requestPaused", (params) => {
-                const task = handleFetchRequestPaused(cdp, params)
-                    .then((labels) => {
-                    let sawNewLabel = false;
-                    for (const label of labels) {
-                        if (!observedLabels.has(label)) {
-                            sawNewLabel = true;
-                        }
-                        observedLabels.add(label);
-                    }
-                    if (!completed && labels.length > 0) {
-                        markObserved();
-                    }
-                    if (completed && sawNewLabel) {
-                        debugRuntime(`patched labels now active: ${[...observedLabels].join(", ")}`);
-                    }
-                });
-                pausedRequestHandlers.add(task);
-                task.then(() => pausedRequestHandlers.delete(task), () => pausedRequestHandlers.delete(task));
-                return task;
-            });
         });
         void initialSession.catch(() => undefined);
+        registerRuntimeFetchHandler(connectionGeneration);
         try {
-            await cdp.send("Page.enable");
-            debugRuntime("Page.enable ok");
-            await waitForInitialPageLoad;
-            debugRuntime("initial page load settled");
-            await cdp.send("Fetch.enable", {
-                patterns: [
-                    {
-                        urlPattern: "app://*/assets/*.js",
-                        requestStage: "Response",
-                    },
-                    {
-                        urlPattern: "app://*/webview/assets/*.js",
-                        requestStage: "Response",
-                    },
-                ],
-            });
-            debugRuntime("Fetch.enable ok");
-            await cdp.send("Page.reload", { ignoreCache: true });
-            debugRuntime("Page.reload ok");
+            await enableRuntimePatchInterception(cdp, { waitForInitialLoad: true, reload: true });
         }
         catch (error) {
             failSession(asError(error));
         }
         const patchedLabels = await initialSession;
         keepSessionOpen = true;
+        startHeartbeat();
         return {
             patchedLabels,
-            close: () => cdp.close(),
+            close: () => {
+                closed = true;
+                stopHeartbeat();
+                cdp.close();
+            },
+            lost,
         };
     }
     finally {
         if (!keepSessionOpen) {
+            closed = true;
+            stopHeartbeat();
             cdp.close();
         }
     }
@@ -1566,6 +1726,12 @@ async function runRuntimeLaunch() {
         printLine("Patched targets:");
         printLine("  Browser-use native pipe peer auth");
         printLine("");
+        if (process.env.CODEXFAST_TEST_RUNTIME_LAUNCH_SESSION_LOST === "1") {
+            printLine(runtimePatchSessionLostMessage(new Error("simulated CDP heartbeat failure")));
+            printLine("");
+            printLine("Exit code: 1");
+            return 1;
+        }
         printLine("Exit code: 0");
         return 0;
     }
@@ -1584,11 +1750,25 @@ async function runRuntimeLaunch() {
             printLine(`  ${label}`);
         }
         printLine("");
-        const exitCode = await childExit;
+        const outcome = await Promise.race([
+            childExit.then((exitCode) => ({ type: "child-exit", exitCode })),
+            session.lost.then((error) => ({ type: "session-lost", error })),
+        ]);
+        if (outcome.type === "session-lost") {
+            session.close();
+            session = null;
+            if (child && !child.killed) {
+                terminateRuntimeLaunchProcess(child);
+            }
+            printLine(outcome.error.message);
+            printLine("");
+            printLine("Exit code: 1");
+            return 1;
+        }
         session.close();
         session = null;
-        printLine(`Exit code: ${exitCode}`);
-        return exitCode;
+        printLine(`Exit code: ${outcome.exitCode}`);
+        return outcome.exitCode;
     }
     catch (error) {
         if (session) {

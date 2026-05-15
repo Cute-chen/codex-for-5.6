@@ -20,6 +20,7 @@ This project follows a simple release-oriented changelog format.
 - Fixed runtime launch interception for `Codex.app` `26.513.20950` by waiting for the initial renderer load to settle before enabling Fetch interception and reloading the page.
 - Fixed the generated single-file runtime patch engine extraction so `launch` can apply the embedded patch rules instead of silently continuing intercepted responses.
 - Kept runtime launch interception alive for the lifetime of the launched Codex process so lazy-loaded Settings Fast and Plugins page-content chunks can be patched after the initial window appears.
+- Added runtime launch heartbeat and bounded CDP reconnects so dropped runtime patch sessions retry at most three times before reporting `Runtime patch session lost`.
 - Matched both current `app://-/assets/*.js` runtime URLs and legacy `app://-/webview/assets/*.js` runtime URLs.
 
 ## [0.15.1] - 2026-05-15

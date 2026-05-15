@@ -177,6 +177,9 @@ function assertGeneratedCliRuntimeRequirements(): void {
   const generatedCli = readFileSync(join(rootDir, "bin", "codexfast"), "utf8");
   assertContains(generatedCli, 'const MIN_NODE_VERSION = "18.12.0";', "expected generated CLI to enforce Node.js 18.12.0 or later");
   assertContains(generatedCli, '"@electron/asar@3.4.1"', "expected generated CLI to pin the Node 18-compatible asar package");
+  assertContains(generatedCli, "runtimePatchReconnectMaxAttempts = 3", "expected generated CLI to bound runtime launch reconnect attempts");
+  assertContains(generatedCli, '"Page.getFrameTree"', "expected generated CLI to heartbeat the CDP runtime patch session");
+  assertContains(generatedCli, "Runtime patch session lost after", "expected generated CLI to report exhausted runtime patch reconnects clearly");
   assertNotContains(generatedCli, "__SUPPORTED_APP_VERSIONS__", "expected generated CLI to inline supported app versions without placeholder names");
 }
 
@@ -359,6 +362,20 @@ function main(): void {
   assertContains(readOutput(launchSuccessOutput), "Browser-use native pipe peer auth", "expected launch dry-run hook to report runtime target labels", readOutput(launchSuccessOutput));
   assertNoCodesignCalls(launchSuccessOutput);
   assertNoTccutilCalls(launchSuccessOutput);
+
+  const launchSessionLostApp = join(tmpDir, "LaunchSessionLost.app");
+  const launchSessionLostOutput = join(tmpDir, "launch-session-lost-output.txt");
+  prepareArchivedFakeApp(launchSessionLostApp, join(tmpDir, "launch-session-lost-assets"), "26.513.20950", "2816", "26513-2816");
+  runScriptCommand(launchSessionLostApp, ["launch"], launchSessionLostOutput, {
+    CODEXFAST_TEST_ALLOW_NONZERO: "1",
+    CODEXFAST_TEST_RUNTIME_LAUNCH_SESSION_LOST: "1",
+    CODEXFAST_TEST_RUNTIME_LAUNCH_SUCCESS: "1",
+  });
+  assertContains(readOutput(launchSessionLostOutput), "Runtime launch completed.", "expected launch session-lost hook to reach a ready session first", readOutput(launchSessionLostOutput));
+  assertContains(readOutput(launchSessionLostOutput), "Runtime patch session lost after 3 reconnect attempts:", "expected launch to report exhausted runtime reconnect attempts", readOutput(launchSessionLostOutput));
+  assertContains(readOutput(launchSessionLostOutput), "Exit code: 1", "expected exhausted runtime reconnect attempts to fail launch", readOutput(launchSessionLostOutput));
+  assertNoCodesignCalls(launchSessionLostOutput);
+  assertNoTccutilCalls(launchSessionLostOutput);
 
   const menuLaunchSuccessApp = join(tmpDir, "MenuLaunchSuccess.app");
   const menuLaunchSuccessOutput = join(tmpDir, "menu-launch-success-output.txt");

@@ -9,6 +9,7 @@ Expected behavior:
 - `npx codexfast launch` is the recommended path.
 - It starts Codex with a local CDP endpoint and applies runtime patches only to that launched session.
 - Keep the `codexfast launch` process running while you use Codex. Settings and Plugins load some chunks lazily, and those later requests still need the runtime interceptor.
+- The launcher sends a lightweight CDP heartbeat. If the runtime patch session drops, it reconnects at most three times, re-enables `Page` and `Fetch`, reloads the renderer, and then reports `Runtime patch session lost` if reconnects are exhausted.
 - It does not modify `app.asar`, `Info.plist`, the app bundle, the app signature, backups, or macOS privacy permissions.
 
 If launch is blocked:
@@ -22,6 +23,12 @@ If Settings Fast or Plugins content is still missing after launch:
 1. Confirm the terminal process that ran `npx codexfast launch` is still running.
 2. Fully quit Codex, rerun `npx codexfast launch`, and keep that process open while navigating to Settings and Plugins.
 3. If the process is still running and the build is supported, inspect the runtime debug output for lazy chunk matches such as `general-settings-*.js` and `skills-page-*.js`.
+
+If launch reports `Runtime patch session lost after 3 reconnect attempts`:
+
+1. Fully quit Codex and confirm no `Codex` main process remains.
+2. Re-run `npx codexfast launch`.
+3. Do not keep using that launched session as proof of runtime patch behavior; reconnects were exhausted, so later lazy chunks may not be patched.
 
 If Codex shows `Codex failed to start` with `ERR_FAILED` while runtime launch is being tested:
 

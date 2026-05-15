@@ -36,7 +36,7 @@ Runtime launch does not modify `app.asar`, `Info.plist`, the app bundle, or the 
 
 `Codex.app` already contains the Fast, `/fast`, Speed, model-list, and Plugins UI paths in its packaged frontend bundle, but some of those paths are hidden or disabled for custom API users by local gate checks. `codexfast` does not add a new backend service or call a private OpenAI API.
 
-The recommended `launch` command starts Codex with a local Chrome DevTools Protocol endpoint for that launched session, intercepts matching renderer JavaScript responses, and applies the same narrow patch rules in memory. Keep the `codexfast launch` process running while you use Codex; Settings and Plugins load some feature chunks lazily, so the runtime interceptor must stay attached after the first window appears. When the launched session exits, those runtime patches are gone. This mode does not rewrite the installed app bundle and does not replace the original code signature.
+The recommended `launch` command starts Codex with a local Chrome DevTools Protocol endpoint for that launched session, intercepts matching renderer JavaScript responses, and applies the same narrow patch rules in memory. Keep the `codexfast launch` process running while you use Codex; Settings and Plugins load some feature chunks lazily, so the runtime interceptor must stay attached after the first window appears. The launcher sends a lightweight CDP heartbeat, tries up to three bounded reconnects if the runtime patch session drops, then reports `Runtime patch session lost` instead of silently continuing unpatched. When the launched session exits, those runtime patches are gone. This mode does not rewrite the installed app bundle and does not replace the original code signature.
 
 The legacy `apply` fallback changes the installed app bundle on verified builds.
 
@@ -102,7 +102,7 @@ The same actions are also available as non-interactive commands: `launch`, `stat
 
 Run `npx codexfast launch` or choose **1) Launch Codex with runtime patches (recommended)**. Codex must not already be running. This opens Codex with a local CDP endpoint and applies runtime patches only to the launched session.
 
-Keep the terminal command running while you use Codex. The process stays attached so runtime patches can also apply to lazy-loaded Settings and Plugins chunks after you open those views.
+Keep the terminal command running while you use Codex. The process stays attached so runtime patches can also apply to lazy-loaded Settings and Plugins chunks after you open those views. If the CDP runtime patch session drops, the launcher heartbeats, reconnects at most three times, and then fails loudly with `Runtime patch session lost`.
 
 No bundle files are rewritten, no backups are created, and the original app signature is left untouched. Fully quit that launched Codex session to return to the unmodified app behavior and end the foreground launcher.
 
@@ -207,6 +207,8 @@ codesign --force --deep --sign - /Applications/Codex.app
 **Runtime launch shows `Codex failed to start` / `ERR_FAILED`** — fully quit Codex and rerun the latest `npx codexfast launch`. A failed runtime launch should not modify `app.asar`, `Info.plist`, the app bundle, backups, the app signature, or macOS privacy permissions. If this persists on a supported build, use `npx codexfast status` and report the detected version/build plus the launch output; use legacy `apply` only when you explicitly need persistent bundle patching.
 
 **Settings Fast or Plugins content is still missing after `launch`** — confirm the `codexfast launch` terminal process is still running. Closing it ends CDP interception, so lazy-loaded Settings and Plugins chunks cannot be patched later in the session.
+
+**Runtime patch session lost after reconnect attempts** — fully quit Codex and rerun `npx codexfast launch`. The launcher stops after bounded reconnect attempts so it does not keep retrying forever while Codex may be running without runtime patches.
 
 **Plugins visible but a specific plugin is still unusable** — run **Check current status** first. On `26.429.20946`, `26.429.30905`, `26.429.61741`, `26.506.21252`, `26.506.31421`, and `26.513.20950`, `Plugin install availability enabled` means the top-level connector-unavailable install block is patched, and `Plugin install modal content enabled` means the empty install-modal detail card gate is patched. Remaining failures usually come from plugin state, connector runtime behavior, or admin-side restrictions.
 
