@@ -28,7 +28,7 @@ import {
   assertGuardedState26506Build2620,
   assertGuardedState26513Build2816,
 } from "./helpers/patch-state-assertions.mts";
-import { assertCodesignCallContains as assertCodesignCallContainsHelper, assertCodesignCalls as assertCodesignCallsHelper, assertLaunchctlCallContains as assertLaunchctlCallContainsHelper, assertNoCodesignCalls as assertNoCodesignCallsHelper, assertNoNpmCalls as assertNoNpmCallsHelper, assertNoTccutilCalls as assertNoTccutilCallsHelper, assertNpmCallContains as assertNpmCallContainsHelper, assertTccutilCallContains as assertTccutilCallContainsHelper, readOutput, resetCodesignCalls as resetCodesignCallsHelper, resetNpmCalls as resetNpmCallsHelper, resetTccutilCalls as resetTccutilCallsHelper, runScript as runScriptHelper, setupStubs as setupStubsHelper } from "./helpers/script-harness.mts";
+import { assertCodesignCallContains as assertCodesignCallContainsHelper, assertCodesignCalls as assertCodesignCallsHelper, assertLaunchctlCallContains as assertLaunchctlCallContainsHelper, assertNoCodesignCalls as assertNoCodesignCallsHelper, assertNoLaunchCalls as assertNoLaunchCallsHelper, assertNoNpmCalls as assertNoNpmCallsHelper, assertNoTccutilCalls as assertNoTccutilCallsHelper, assertNpmCallContains as assertNpmCallContainsHelper, assertTccutilCallContains as assertTccutilCallContainsHelper, readOutput, resetCodesignCalls as resetCodesignCallsHelper, resetNpmCalls as resetNpmCallsHelper, resetTccutilCalls as resetTccutilCallsHelper, runScript as runScriptHelper, setupStubs as setupStubsHelper } from "./helpers/script-harness.mts";
 import { applyRuntimePatchesToBody } from "../src/patch-engine.mts";
 import { TARGET_SPECS } from "../src/patcher-targets.mts";
 
@@ -115,6 +115,10 @@ function assertNpmCallContains(expected: string, outputFile: string): void {
 
 function assertNoNpmCalls(outputFile: string): void {
   assertNoNpmCallsHelper(markerFile, outputFile);
+}
+
+function assertNoLaunchCalls(outputFile: string): void {
+  assertNoLaunchCallsHelper(markerFile, outputFile);
 }
 
 function resetNpmCalls(): void {
@@ -308,6 +312,26 @@ function main(): void {
   assertContains(readOutput(unsupportedRepairNoToolsOutput), "Repair skipped because this Codex.app build is unsupported.", "expected unsupported repair to skip without patch prerequisites", readOutput(unsupportedRepairNoToolsOutput));
   assertNotContains(readOutput(unsupportedRepairNoToolsOutput), "npm not found", "expected unsupported repair to skip before npm checks", readOutput(unsupportedRepairNoToolsOutput));
   assertNotContains(readOutput(unsupportedRepairNoToolsOutput), "codesign not found", "expected unsupported repair to skip before codesign checks", readOutput(unsupportedRepairNoToolsOutput));
+
+  const unsupportedLaunchApp = join(tmpDir, "UnsupportedLaunch.app");
+  const unsupportedLaunchOutput = join(tmpDir, "unsupported-launch-output.txt");
+  prepareArchivedFakeApp(unsupportedLaunchApp, join(tmpDir, "unsupported-launch-assets"), "99.0.0", "9999");
+  runScriptCommand(unsupportedLaunchApp, ["launch"], unsupportedLaunchOutput, { CODEXFAST_TEST_ALLOW_NONZERO: "1" });
+  assertContains(readOutput(unsupportedLaunchOutput), "Action: launch", "expected launch to print an action header", readOutput(unsupportedLaunchOutput));
+  assertContains(readOutput(unsupportedLaunchOutput), "Compatibility: unsupported", "expected unsupported launch to print compatibility", readOutput(unsupportedLaunchOutput));
+  assertContains(readOutput(unsupportedLaunchOutput), "Runtime launch is blocked for this Codex.app version.", "expected unsupported launch to fail closed", readOutput(unsupportedLaunchOutput));
+  assertContains(readOutput(unsupportedLaunchOutput), "Exit code: 1", "expected unsupported launch to return exit code 1", readOutput(unsupportedLaunchOutput));
+  assertNoLaunchCalls(unsupportedLaunchOutput);
+
+  const runningLaunchApp = join(tmpDir, "RunningLaunch.app");
+  const runningLaunchOutput = join(tmpDir, "running-launch-output.txt");
+  prepareArchivedFakeApp(runningLaunchApp, join(tmpDir, "running-launch-assets"));
+  runScriptCommand(runningLaunchApp, ["launch"], runningLaunchOutput, { CODEXFAST_TEST_CODEX_RUNNING: "1", CODEXFAST_TEST_ALLOW_NONZERO: "1" });
+  assertContains(readOutput(runningLaunchOutput), "Action: launch", "expected launch to print an action header", readOutput(runningLaunchOutput));
+  assertContains(readOutput(runningLaunchOutput), "Compatibility: supported", "expected supported launch to print compatibility", readOutput(runningLaunchOutput));
+  assertContains(readOutput(runningLaunchOutput), "Codex.app is already running. Quit Codex.app before using runtime launch.", "expected launch to fail closed when Codex.app is running", readOutput(runningLaunchOutput));
+  assertContains(readOutput(runningLaunchOutput), "Exit code: 1", "expected running launch to return exit code 1", readOutput(runningLaunchOutput));
+  assertNoLaunchCalls(runningLaunchOutput);
 
   runApplyRestoreCase({
     name: "existing",

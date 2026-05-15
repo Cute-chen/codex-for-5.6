@@ -602,7 +602,7 @@ function checkRequirements(options: { command?: string } = {}): boolean {
 
   loadAppCompatibilityMetadata();
 
-  if (options.command === "repair" && !appVersionSupported) {
+  if ((options.command === "repair" && !appVersionSupported) || options.command === "launch") {
     return true;
   }
 
@@ -800,6 +800,43 @@ function runEmbeddedTool(action: string): number {
   return exitCode;
 }
 
+function isCodexRunning(): boolean {
+  if (process.env.CODEXFAST_TEST_CODEX_RUNNING === "1") {
+    return true;
+  }
+
+  const pgrepBin = resolveCommand("pgrep");
+  if (!pgrepBin) {
+    return false;
+  }
+
+  return run(pgrepBin, ["-x", "Codex"]).status === 0;
+}
+
+function runRuntimeLaunch(): number {
+  printActionHeader("launch");
+
+  if (!appVersionSupported) {
+    printLine("Runtime launch is blocked for this Codex.app version.");
+    printLine(`Supported versions: ${supportedAppVersionKeys}`);
+    printLine("");
+    printLine("Exit code: 1");
+    return 1;
+  }
+
+  if (isCodexRunning()) {
+    printLine("Codex.app is already running. Quit Codex.app before using runtime launch.");
+    printLine("");
+    printLine("Exit code: 1");
+    return 1;
+  }
+
+  printLine("Runtime launch is not implemented yet.");
+  printLine("");
+  printLine("Exit code: 1");
+  return 1;
+}
+
 function watcherRunnerSource(): string {
   return `#!/usr/bin/env node
 const { spawnSync } = require("node:child_process");
@@ -952,6 +989,7 @@ function printUsage(): void {
   printLine("");
   printLine("Commands:");
   printLine("  status             Check version, compatibility, and feature state");
+  printLine("  launch             Start runtime launch mode after compatibility guard checks");
   printLine("  apply              Enable custom API features on a supported build");
   printLine("  repair             Safely re-apply missing patches; no-op on unsupported or already patched builds");
   printLine("  restore            Restore the original app archive or file backups");
@@ -1047,6 +1085,8 @@ async function main(): Promise<number> {
       case "repair":
       case "restore":
         return runEmbeddedTool(command);
+      case "launch":
+        return runRuntimeLaunch();
       case "install-watcher":
         return installWatcher();
       default:

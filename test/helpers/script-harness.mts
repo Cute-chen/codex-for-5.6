@@ -12,6 +12,7 @@ export function setupStubs(stubBin: string, markerFile: string): void {
   const tccutilMarkerFile = `${markerFile}.tccutil`;
   const npmMarkerFile = `${markerFile}.npm`;
   const launchctlMarkerFile = `${markerFile}.launchctl`;
+  const launchMarkerFile = `${markerFile}.launch`;
   mkdirSync(stubBin, { recursive: true });
   writeExecutable(join(stubBin, "clear"), "#!/bin/bash\nexit 0\n");
   writeExecutable(
@@ -51,6 +52,13 @@ exit 0
     join(stubBin, "launchctl"),
     `#!/bin/bash
 printf '%s\\n' "$*" >> ${JSON.stringify(launchctlMarkerFile)}
+exit 0
+`,
+  );
+  writeExecutable(
+    join(stubBin, "open"),
+    `#!/bin/bash
+printf '%s\\n' "$*" >> ${JSON.stringify(launchMarkerFile)}
 exit 0
 `,
   );
@@ -266,5 +274,12 @@ export function assertLaunchctlCallContains(expected: string, markerFile: string
   const calls = readFileSync(launchctlMarkerFile, "utf8");
   if (!calls.includes(expected)) {
     fail(`expected launchctl call to include ${expected}`, `${calls}\n${readOutput(outputFile)}`);
+  }
+}
+
+export function assertNoLaunchCalls(markerFile: string, outputFile: string): void {
+  const launchMarkerFile = `${markerFile}.launch`;
+  if (existsSync(launchMarkerFile)) {
+    fail("expected Codex.app launch not to be invoked", `${readFileSync(launchMarkerFile, "utf8")}\n${readOutput(outputFile)}`);
   }
 }
