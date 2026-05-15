@@ -1802,7 +1802,7 @@ async function showMenu(): Promise<number> {
       const choice = (await rl.question("Select an option: ")).trim();
       switch (choice) {
         case "1":
-          runEmbeddedTool("launch");
+          await runRuntimeLaunch();
           await rl.question("Press Enter to continue...");
           break;
         case "2":

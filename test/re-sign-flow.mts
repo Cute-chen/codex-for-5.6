@@ -349,6 +349,17 @@ function main(): void {
   assertNoCodesignCalls(launchSuccessOutput);
   assertNoTccutilCalls(launchSuccessOutput);
 
+  const menuLaunchSuccessApp = join(tmpDir, "MenuLaunchSuccess.app");
+  const menuLaunchSuccessOutput = join(tmpDir, "menu-launch-success-output.txt");
+  prepareArchivedFakeApp(menuLaunchSuccessApp, join(tmpDir, "menu-launch-success-assets"), "26.513.20950", "2816", "26513-2816");
+  runScript(menuLaunchSuccessApp, "1\n\nq\n", menuLaunchSuccessOutput, {
+    CODEXFAST_TEST_RUNTIME_LAUNCH_SUCCESS: "1",
+  });
+  assertContains(readOutput(menuLaunchSuccessOutput), "Runtime launch completed.", "expected menu launch option to report success", readOutput(menuLaunchSuccessOutput));
+  assertContains(readOutput(menuLaunchSuccessOutput), "Browser-use native pipe peer auth", "expected menu launch option to report runtime target labels", readOutput(menuLaunchSuccessOutput));
+  assertNoCodesignCalls(menuLaunchSuccessOutput);
+  assertNoTccutilCalls(menuLaunchSuccessOutput);
+
   const nonRunningLaunchApp = join(tmpDir, "NonRunningLaunch.app");
   const nonRunningLaunchOutput = join(tmpDir, "non-running-launch-output.txt");
   prepareArchivedFakeApp(nonRunningLaunchApp, join(tmpDir, "non-running-launch-assets"), "26.513.20950", "2816", "26513-2816");
