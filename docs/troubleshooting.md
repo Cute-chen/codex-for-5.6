@@ -8,6 +8,7 @@ Expected behavior:
 
 - `npx codexfast launch` is the recommended path.
 - It starts Codex with a local CDP endpoint and applies runtime patches only to that launched session.
+- Keep the `codexfast launch` process running while you use Codex. Settings and Plugins load some chunks lazily, and those later requests still need the runtime interceptor.
 - It does not modify `app.asar`, `Info.plist`, the app bundle, the app signature, backups, or macOS privacy permissions.
 
 If launch is blocked:
@@ -15,6 +16,12 @@ If launch is blocked:
 1. Fully quit any running `Codex.app` instance.
 2. Run `npx codexfast status` and confirm the detected version/build is `supported`.
 3. Use legacy `npx codexfast apply` only as a fallback when you explicitly need persistent bundle patches.
+
+If Settings Fast or Plugins content is still missing after launch:
+
+1. Confirm the terminal process that ran `npx codexfast launch` is still running.
+2. Fully quit Codex, rerun `npx codexfast launch`, and keep that process open while navigating to Settings and Plugins.
+3. If the process is still running and the build is supported, inspect the runtime debug output for lazy chunk matches such as `general-settings-*.js` and `skills-page-*.js`.
 
 If Codex shows `Codex failed to start` with `ERR_FAILED` while runtime launch is being tested:
 

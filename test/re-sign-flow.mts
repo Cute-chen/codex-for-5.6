@@ -355,6 +355,7 @@ function main(): void {
     CODEXFAST_TEST_RUNTIME_LAUNCH_SUCCESS: "1",
   });
   assertContains(readOutput(launchSuccessOutput), "Runtime launch completed.", "expected launch command to report success", readOutput(launchSuccessOutput));
+  assertContains(readOutput(launchSuccessOutput), "Keep this codexfast launch process running while you use Codex.", "expected launch command to describe the foreground runtime session", readOutput(launchSuccessOutput));
   assertContains(readOutput(launchSuccessOutput), "Browser-use native pipe peer auth", "expected launch dry-run hook to report runtime target labels", readOutput(launchSuccessOutput));
   assertNoCodesignCalls(launchSuccessOutput);
   assertNoTccutilCalls(launchSuccessOutput);
@@ -366,6 +367,7 @@ function main(): void {
     CODEXFAST_TEST_RUNTIME_LAUNCH_SUCCESS: "1",
   });
   assertContains(readOutput(menuLaunchSuccessOutput), "Runtime launch completed.", "expected menu launch option to report success", readOutput(menuLaunchSuccessOutput));
+  assertContains(readOutput(menuLaunchSuccessOutput), "Keep this codexfast launch process running while you use Codex.", "expected menu launch option to describe the foreground runtime session", readOutput(menuLaunchSuccessOutput));
   assertContains(readOutput(menuLaunchSuccessOutput), "Browser-use native pipe peer auth", "expected menu launch option to report runtime target labels", readOutput(menuLaunchSuccessOutput));
   assertNoCodesignCalls(menuLaunchSuccessOutput);
   assertNoTccutilCalls(menuLaunchSuccessOutput);

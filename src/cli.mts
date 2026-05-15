@@ -114,6 +114,11 @@ type CdpMessage = {
   };
 };
 
+type RuntimePatchSessionHandle = {
+  patchedLabels: string[];
+  close: () => void;
+};
+
 const runtimePatchConnectTimeoutMs = 12_000;
 const runtimePatchSessionTimeoutMs = 12_000;
 const runtimePatchSettleMs = 750;
@@ -1534,12 +1539,13 @@ async function waitForRuntimePatchConnection(debugPort: number): Promise<CdpConn
   throw new Error(`CDP connection unavailable after bounded retries${detail}`);
 }
 
-async function runRuntimePatchSession(debugPort: number): Promise<string[]> {
+async function startRuntimePatchSession(debugPort: number): Promise<RuntimePatchSessionHandle> {
   const cdp = await waitForRuntimePatchConnection(debugPort);
   const observedLabels = new Set<string>();
   const pausedRequestHandlers = new Set<Promise<void>>();
   let settleTimer: ReturnType<typeof setTimeout> | null = null;
   let failSession: (error: Error) => void = () => undefined;
+  let keepSessionOpen = false;
 
   try {
     const waitForInitialPageLoad = new Promise<void>((resolve) => {
@@ -1561,7 +1567,7 @@ async function runRuntimePatchSession(debugPort: number): Promise<string[]> {
       cdp.on("Page.frameStoppedLoading", resolveOnce);
     });
 
-    const session = new Promise<string[]>((resolve, reject) => {
+    const initialSession = new Promise<string[]>((resolve, reject) => {
       let timeout: ReturnType<typeof setTimeout> | null = null;
       let completed = false;
       let finishStarted = false;
@@ -1624,16 +1630,20 @@ async function runRuntimePatchSession(debugPort: number): Promise<string[]> {
       timeout = setTimeout(finish, runtimePatchSessionTimeoutMs);
       cdp.onEventError(fail);
       cdp.on("Fetch.requestPaused", (params: unknown) => {
-        if (completed) {
-          return;
-        }
         const task = handleFetchRequestPaused(cdp, params as FetchRequestPausedParams)
           .then((labels) => {
+            let sawNewLabel = false;
             for (const label of labels) {
+              if (!observedLabels.has(label)) {
+                sawNewLabel = true;
+              }
               observedLabels.add(label);
             }
-            if (labels.length > 0) {
+            if (!completed && labels.length > 0) {
               markObserved();
+            }
+            if (completed && sawNewLabel) {
+              debugRuntime(`patched labels now active: ${[...observedLabels].join(", ")}`);
             }
           });
         pausedRequestHandlers.add(task);
@@ -1644,7 +1654,7 @@ async function runRuntimePatchSession(debugPort: number): Promise<string[]> {
         return task;
       });
     });
-    void session.catch(() => undefined);
+    void initialSession.catch(() => undefined);
 
     try {
       await cdp.send("Page.enable");
@@ -1670,14 +1680,37 @@ async function runRuntimePatchSession(debugPort: number): Promise<string[]> {
       failSession(asError(error));
     }
 
-    return await session;
+    const patchedLabels = await initialSession;
+    keepSessionOpen = true;
+    return {
+      patchedLabels,
+      close: () => cdp.close(),
+    };
   } finally {
-    cdp.close();
+    if (!keepSessionOpen) {
+      cdp.close();
+    }
   }
 }
 
-async function waitForRuntimePatchSession(debugPort: number): Promise<string[]> {
-  return runRuntimePatchSession(debugPort);
+async function waitForRuntimePatchSession(debugPort: number): Promise<RuntimePatchSessionHandle> {
+  return startRuntimePatchSession(debugPort);
+}
+
+function waitForRuntimeLaunchProcessExit(child: ChildProcess): Promise<number> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (exitCode: number): void => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      resolve(exitCode);
+    };
+
+    child.once("error", () => finish(1));
+    child.once("exit", (code) => finish(code ?? 0));
+  });
 }
 
 async function runRuntimeLaunch(): Promise<number> {
@@ -1708,6 +1741,8 @@ async function runRuntimeLaunch(): Promise<number> {
 
   if (process.env.CODEXFAST_TEST_RUNTIME_LAUNCH_SUCCESS === "1") {
     printLine("Runtime launch completed.");
+    printLine("Keep this codexfast launch process running while you use Codex.");
+    printLine("Quit Codex to end the runtime patch session.");
     printLine("Patched targets:");
     printLine("  Browser-use native pipe peer auth");
     printLine("");
@@ -1716,20 +1751,30 @@ async function runRuntimeLaunch(): Promise<number> {
   }
 
   let child: ChildProcess | null = null;
+  let session: RuntimePatchSessionHandle | null = null;
   try {
     const debugPort = randomDebugPort();
     child = launchCodexProcess(debugPort);
-    const patchedLabels = await waitForRuntimePatchSession(debugPort);
+    const childExit = waitForRuntimeLaunchProcessExit(child);
+    session = await waitForRuntimePatchSession(debugPort);
     printLine("Runtime launch completed.");
+    printLine("Keep this codexfast launch process running while you use Codex.");
+    printLine("Quit Codex to end the runtime patch session.");
     printLine("Patched targets:");
-    for (const label of patchedLabels) {
+    for (const label of session.patchedLabels) {
       printLine(`  ${label}`);
     }
-    child.unref();
     printLine("");
-    printLine("Exit code: 0");
-    return 0;
+    const exitCode = await childExit;
+    session.close();
+    session = null;
+    printLine(`Exit code: ${exitCode}`);
+    return exitCode;
   } catch (error) {
+    if (session) {
+      session.close();
+      session = null;
+    }
     if (child && !child.killed) {
       terminateRuntimeLaunchProcess(child);
     }

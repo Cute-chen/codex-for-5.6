@@ -1377,12 +1377,13 @@ async function waitForRuntimePatchConnection(debugPort) {
     const detail = lastError ? `: ${lastError.message}` : "";
     throw new Error(`CDP connection unavailable after bounded retries${detail}`);
 }
-async function runRuntimePatchSession(debugPort) {
+async function startRuntimePatchSession(debugPort) {
     const cdp = await waitForRuntimePatchConnection(debugPort);
     const observedLabels = new Set();
     const pausedRequestHandlers = new Set();
     let settleTimer = null;
     let failSession = () => undefined;
+    let keepSessionOpen = false;
     try {
         const waitForInitialPageLoad = new Promise((resolve) => {
             let settled = false;
@@ -1401,7 +1402,7 @@ async function runRuntimePatchSession(debugPort) {
             cdp.on("Page.loadEventFired", resolveOnce);
             cdp.on("Page.frameStoppedLoading", resolveOnce);
         });
-        const session = new Promise((resolve, reject) => {
+        const initialSession = new Promise((resolve, reject) => {
             let timeout = null;
             let completed = false;
             let finishStarted = false;
@@ -1460,16 +1461,20 @@ async function runRuntimePatchSession(debugPort) {
             timeout = setTimeout(finish, runtimePatchSessionTimeoutMs);
             cdp.onEventError(fail);
             cdp.on("Fetch.requestPaused", (params) => {
-                if (completed) {
-                    return;
-                }
                 const task = handleFetchRequestPaused(cdp, params)
                     .then((labels) => {
+                    let sawNewLabel = false;
                     for (const label of labels) {
+                        if (!observedLabels.has(label)) {
+                            sawNewLabel = true;
+                        }
                         observedLabels.add(label);
                     }
-                    if (labels.length > 0) {
+                    if (!completed && labels.length > 0) {
                         markObserved();
+                    }
+                    if (completed && sawNewLabel) {
+                        debugRuntime(`patched labels now active: ${[...observedLabels].join(", ")}`);
                     }
                 });
                 pausedRequestHandlers.add(task);
@@ -1477,7 +1482,7 @@ async function runRuntimePatchSession(debugPort) {
                 return task;
             });
         });
-        void session.catch(() => undefined);
+        void initialSession.catch(() => undefined);
         try {
             await cdp.send("Page.enable");
             debugRuntime("Page.enable ok");
@@ -1502,14 +1507,35 @@ async function runRuntimePatchSession(debugPort) {
         catch (error) {
             failSession(asError(error));
         }
-        return await session;
+        const patchedLabels = await initialSession;
+        keepSessionOpen = true;
+        return {
+            patchedLabels,
+            close: () => cdp.close(),
+        };
     }
     finally {
-        cdp.close();
+        if (!keepSessionOpen) {
+            cdp.close();
+        }
     }
 }
 async function waitForRuntimePatchSession(debugPort) {
-    return runRuntimePatchSession(debugPort);
+    return startRuntimePatchSession(debugPort);
+}
+function waitForRuntimeLaunchProcessExit(child) {
+    return new Promise((resolve) => {
+        let settled = false;
+        const finish = (exitCode) => {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            resolve(exitCode);
+        };
+        child.once("error", () => finish(1));
+        child.once("exit", (code) => finish(code ?? 0));
+    });
 }
 async function runRuntimeLaunch() {
     printActionHeader("launch");
@@ -1535,6 +1561,8 @@ async function runRuntimeLaunch() {
     }
     if (process.env.CODEXFAST_TEST_RUNTIME_LAUNCH_SUCCESS === "1") {
         printLine("Runtime launch completed.");
+        printLine("Keep this codexfast launch process running while you use Codex.");
+        printLine("Quit Codex to end the runtime patch session.");
         printLine("Patched targets:");
         printLine("  Browser-use native pipe peer auth");
         printLine("");
@@ -1542,21 +1570,31 @@ async function runRuntimeLaunch() {
         return 0;
     }
     let child = null;
+    let session = null;
     try {
         const debugPort = randomDebugPort();
         child = launchCodexProcess(debugPort);
-        const patchedLabels = await waitForRuntimePatchSession(debugPort);
+        const childExit = waitForRuntimeLaunchProcessExit(child);
+        session = await waitForRuntimePatchSession(debugPort);
         printLine("Runtime launch completed.");
+        printLine("Keep this codexfast launch process running while you use Codex.");
+        printLine("Quit Codex to end the runtime patch session.");
         printLine("Patched targets:");
-        for (const label of patchedLabels) {
+        for (const label of session.patchedLabels) {
             printLine(`  ${label}`);
         }
-        child.unref();
         printLine("");
-        printLine("Exit code: 0");
-        return 0;
+        const exitCode = await childExit;
+        session.close();
+        session = null;
+        printLine(`Exit code: ${exitCode}`);
+        return exitCode;
     }
     catch (error) {
+        if (session) {
+            session.close();
+            session = null;
+        }
         if (child && !child.killed) {
             terminateRuntimeLaunchProcess(child);
         }

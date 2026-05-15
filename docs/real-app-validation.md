@@ -11,6 +11,9 @@ Use these checks when validating `launch` behavior. Do not mark a build as real-
 - `npx codexfast launch` starts Codex when Codex is not already running
 - The launched session opens with runtime patches active
 - The launch output reports the expected patched target labels for the current build
+- The `codexfast launch` process remains running while the launched Codex session is open
+- With the launch process still running, opening Settings activates the Settings-side Fast control even if the Settings chunk loads after the initial window
+- With the launch process still running, opening Plugins shows plugin page content even if the Plugins chunk loads after the initial window
 - `app.asar`, `Info.plist`, and the app code signature are unchanged after launch exits
 - If launch fails, the app signature and `app.asar` are still unchanged and no Codex main process is left running
 - Launch reports a clear failure when `Codex.app` is already running
