@@ -13,10 +13,10 @@ Determine whether the new build can be supported, update patch logic if needed, 
    - Read `CFBundleVersion`
    - Record the pair in `docs/compatibility-matrix.md` as `investigating` if it is new
 
-2. Run the script in status mode first.
-   - Check detected version/build
-   - Check whether the build is currently `supported` or `unsupported`
-   - Confirm which targets still resolve
+2. Run the public launcher first.
+   - Run `npx codexfast launch` with Codex fully quit
+   - Check the detected version/build printed by launch
+   - Check whether launch reports the build as `supported` or `unsupported`
 
 3. Inspect the bundle before patching.
    - Read `docs/feature-scope.md`
@@ -27,7 +27,7 @@ Determine whether the new build can be supported, update patch logic if needed, 
 
 4. Update the script narrowly.
    - Keep new regexes or target specs as small as possible
-   - Preserve apply/restore symmetry
+   - Preserve internal legacy apply/restore symmetry if touching file-patch targets
    - Preserve runtime launch fail-closed behavior without writing the app bundle
    - Do not widen support claims before validation
 

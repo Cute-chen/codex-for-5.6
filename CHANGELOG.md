@@ -8,12 +8,12 @@ This project follows a simple release-oriented changelog format.
 
 ### Added
 
-- Added a browser-use native pipe peer-auth compatibility target that only allows `missing-code-signing-identity` after local ad-hoc signing, and reports `Browser-use native pipe peer auth` independently in status output.
+- Added a browser-use native pipe peer-auth compatibility target that only allows `missing-code-signing-identity` and reports `Browser-use native pipe peer auth` independently in runtime launch output and internal target checks.
 
 ### Changed
 
-- Help, the interactive menu, and README docs now recommend `codexfast launch` as the default runtime patch path, with `apply` / `restore` labeled as legacy bundle patch fallbacks.
-- Restore now prints the current-version official Codex.app download URL after a successful restore so users can choose whether to reinstall and recover the OpenAI Developer ID signature.
+- Help, the interactive menu, and README docs now expose `codexfast launch` as the public runtime path and remove the legacy `status`, `apply`, `restore`, `install-watcher`, and `uninstall-watcher` entries.
+- Internal legacy restore now prints the current-version official Codex.app download URL after a successful restore so recovered installs can choose whether to reinstall and recover the OpenAI Developer ID signature.
 
 ### Fixed
 
@@ -22,6 +22,7 @@ This project follows a simple release-oriented changelog format.
 - Kept runtime launch interception alive for the lifetime of the launched Codex process so lazy-loaded Settings Fast and Plugins page-content chunks can be patched after the initial window appears.
 - Added runtime launch heartbeat and bounded CDP reconnects so dropped runtime patch sessions retry at most three times before reporting `Runtime patch session lost`.
 - Matched both current `app://-/assets/*.js` runtime URLs and legacy `app://-/webview/assets/*.js` runtime URLs.
+- Removed legacy auto-repair watcher files automatically during `launch`, and kept old watcher-triggered `repair` as a cleanup-only compatibility path.
 
 ## [0.15.1] - 2026-05-15
 

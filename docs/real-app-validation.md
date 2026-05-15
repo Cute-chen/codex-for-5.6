@@ -1,8 +1,8 @@
 # Real-App Validation
 
-This checklist is for manual smoke-testing on an installed `Codex.app` copy after a real patch adaptation.
+This checklist is for manual smoke-testing on an installed `Codex.app` copy after a real runtime-launch adaptation.
 
-Run these checks after any meaningful bundle change, patch-signature update, or compatibility-whitelist expansion.
+Run these checks after any meaningful bundle change, runtime patch-signature update, or compatibility-whitelist expansion.
 
 ## Runtime Launch Checks
 
@@ -48,7 +48,6 @@ Use these checks when validating `launch` behavior. Do not mark a build as real-
 
 ## Browser-use Native Pipe
 
-- `status` reports `Browser-use native pipe peer auth enabled` after apply on builds that contain this target
 - `@chrome` / browser-use no longer fails only because the native pipe peer was rejected with `missing-code-signing-identity`
 - Other native pipe peer-auth failures are still rejected
 
@@ -60,9 +59,8 @@ Use these checks when validating `launch` behavior. Do not mark a build as real-
 
 ## Recovery Checks
 
-- `Restore legacy bundle patch backups` completes successfully
-- `Codex.app` still launches after restore
-- The app remains in packed `app.asar` layout after both apply and restore
+- Launch removes any legacy auto-repair watcher files if they were present before launch
+- The app remains in packed `app.asar` layout after launch
 
 ## Notes
 

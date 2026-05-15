@@ -61,6 +61,10 @@ function runScriptCommand(appDir: string, args: string[], outputFile: string, ex
   runScriptHelper({ rootDir, stubBin, appDir, input: "", outputFile, args, extraEnv });
 }
 
+function runLegacyTool(appDir: string, action: string, outputFile: string, extraEnv: Record<string, string> = {}): void {
+  runScriptCommand(appDir, [`__selftest-legacy-${action}`], outputFile, extraEnv);
+}
+
 function runScriptWithCodesignFailure(appDir: string, input: string, outputFile: string): void {
   runScript(appDir, input, outputFile, { CODEXFAST_TEST_CODESIGN_FAIL: "1" });
 }
@@ -231,7 +235,7 @@ function runApplyRestoreCase(caseConfig: {
   const restoreOutput = join(tmpDir, `${caseConfig.name}-restore.txt`);
   prepareArchivedFakeApp(caseConfig.appDir, caseConfig.assetsRoot, caseConfig.appVersion, caseConfig.appBuild, caseConfig.assetProfile);
 
-  runScript(caseConfig.appDir, "3\n\nq\n", applyOutput);
+  runLegacyTool(caseConfig.appDir, "apply", applyOutput);
   assertNpmCallContains("--package @electron/asar@3.4.1", applyOutput);
   assertCodesignCalls(1, applyOutput);
   assertTccutilCallContains("reset ScreenCapture com.openai.codex", applyOutput);
@@ -244,12 +248,12 @@ function runApplyRestoreCase(caseConfig: {
   resetNativeToolCalls();
 
   if (caseConfig.statusAssert) {
-    runScript(caseConfig.appDir, "2\n\nq\n", statusOutput);
+    runLegacyTool(caseConfig.appDir, "status", statusOutput);
     assertNoPatcherInternalPaths(readOutput(statusOutput), `${caseConfig.name} status output`);
     caseConfig.statusAssert(readOutput(statusOutput));
   }
 
-  runScript(caseConfig.appDir, "4\n\nq\n", restoreOutput);
+  runLegacyTool(caseConfig.appDir, "restore", restoreOutput);
   assertCodesignCalls(1, restoreOutput);
   assertTccutilCallContains("reset ScreenCapture com.openai.codex", restoreOutput);
   assertContains(readOutput(restoreOutput), "Reset macOS screen recording permission for com.openai.codex.", "expected restore to report TCC reset", readOutput(restoreOutput));
@@ -281,21 +285,33 @@ function main(): void {
   assertContains(readOutput(helpOutput), `codexfast ${packageVersion}`, "expected help to print the current package version", readOutput(helpOutput));
   assertContains(readOutput(helpOutput), "Commands:", "expected help to list commands", readOutput(helpOutput));
   assertContains(readOutput(helpOutput), "launch             Launch Codex with runtime patches (recommended)", "expected help to recommend runtime launch mode", readOutput(helpOutput));
-  assertContains(readOutput(helpOutput), "apply              Apply legacy bundle patches (fallback)", "expected help to label apply as legacy fallback", readOutput(helpOutput));
-  assertContains(readOutput(helpOutput), "restore            Restore legacy bundle patch backups", "expected help to label restore as legacy bundle restore", readOutput(helpOutput));
-  assertContains(readOutput(helpOutput), "install-watcher", "expected help to include watcher install command", readOutput(helpOutput));
   assertContains(readOutput(helpOutput), "version", "expected help to include version command", readOutput(helpOutput));
+  assertNotContains(readOutput(helpOutput), "status", "expected help not to advertise legacy status command", readOutput(helpOutput));
+  assertNotContains(readOutput(helpOutput), "apply", "expected help not to advertise legacy apply command", readOutput(helpOutput));
+  assertNotContains(readOutput(helpOutput), "repair", "expected help not to advertise legacy repair command", readOutput(helpOutput));
+  assertNotContains(readOutput(helpOutput), "restore", "expected help not to advertise legacy restore command", readOutput(helpOutput));
+  assertNotContains(readOutput(helpOutput), "watcher", "expected help not to advertise legacy watcher commands", readOutput(helpOutput));
   assertNotContains(readOutput(helpOutput), "--quiet", "expected help not to advertise the legacy quiet marker", readOutput(helpOutput));
   assertNotContains(readOutput(helpOutput), "__selftest-cdp-frame", "expected help not to list the hidden CDP self-test command", readOutput(helpOutput));
   assertNotContains(readOutput(helpOutput), "__selftest-runtime-url", "expected help not to list the hidden runtime URL self-test command", readOutput(helpOutput));
   assertNotContains(readOutput(helpOutput), "__selftest-runtime-patch-body", "expected help not to list the hidden runtime patch body self-test command", readOutput(helpOutput));
+  assertNotContains(readOutput(helpOutput), "__selftest-legacy-apply", "expected help not to list hidden legacy self-test commands", readOutput(helpOutput));
 
   const menuOutput = join(tmpDir, "menu-output.txt");
   prepareArchivedFakeApp(join(tmpDir, "Menu.app"), join(tmpDir, "menu-assets"));
   runScript(join(tmpDir, "Menu.app"), "q\n", menuOutput);
   assertContains(readOutput(menuOutput), "1) Launch Codex with runtime patches (recommended)", "expected no-arg menu to recommend runtime launch mode", readOutput(menuOutput));
-  assertContains(readOutput(menuOutput), "3) Apply legacy bundle patches (fallback)", "expected no-arg menu to label apply as legacy fallback", readOutput(menuOutput));
-  assertContains(readOutput(menuOutput), "4) Restore legacy bundle patch backups", "expected no-arg menu to label restore as legacy bundle restore", readOutput(menuOutput));
+  assertNotContains(readOutput(menuOutput), "2) Check current status", "expected no-arg menu to remove legacy status option", readOutput(menuOutput));
+  assertNotContains(readOutput(menuOutput), "Apply legacy bundle patches", "expected no-arg menu to remove legacy apply option", readOutput(menuOutput));
+  assertNotContains(readOutput(menuOutput), "Restore legacy bundle patch backups", "expected no-arg menu to remove legacy restore option", readOutput(menuOutput));
+  assertNotContains(readOutput(menuOutput), "auto-repair watcher", "expected no-arg menu to remove watcher options", readOutput(menuOutput));
+
+  for (const legacyCommand of ["status", "apply", "restore", "install-watcher", "uninstall-watcher"]) {
+    const legacyCommandOutput = join(tmpDir, `legacy-command-${legacyCommand}.txt`);
+    runScriptCommand(join(tmpDir, `MissingFor${legacyCommand}.app`), [legacyCommand], legacyCommandOutput, { CODEXFAST_TEST_ALLOW_NONZERO: "1" });
+    assertContains(readOutput(legacyCommandOutput), "Commands:", `expected removed command ${legacyCommand} to print help`, readOutput(legacyCommandOutput));
+    assertNotContains(readOutput(legacyCommandOutput), `Action: ${legacyCommand}`, `expected removed command ${legacyCommand} not to run`, readOutput(legacyCommandOutput));
+  }
 
   const versionOutput = join(tmpDir, "version-output.txt");
   runScriptCommand(join(tmpDir, "MissingForVersion.app"), ["version"], versionOutput);
@@ -315,27 +331,27 @@ function main(): void {
   runScriptCommand(join(tmpDir, "MissingForRuntimePatchBodySelfTest.app"), ["__selftest-runtime-patch-body"], runtimePatchBodyOutput);
   assertContains(readOutput(runtimePatchBodyOutput), "Runtime patch body self-test passed", "expected generated CLI runtime patch engine to patch JS bodies", readOutput(runtimePatchBodyOutput));
 
-  const uninstallMissingAppOutput = join(tmpDir, "uninstall-missing-app-output.txt");
-  const uninstallMissingHome = join(tmpDir, "uninstall-missing-home");
-  const uninstallMissingPlist = join(uninstallMissingHome, "Library", "LaunchAgents", "com.codexfast.watcher.plist");
-  const uninstallMissingRuntime = join(uninstallMissingHome, "Library", "Application Support", "codexfast", "codexfast-watcher.js");
-  mkdirSync(join(uninstallMissingHome, "Library", "LaunchAgents"), { recursive: true });
-  mkdirSync(join(uninstallMissingHome, "Library", "Application Support", "codexfast"), { recursive: true });
-  writeFileSync(uninstallMissingPlist, "stale watcher plist");
-  writeFileSync(uninstallMissingRuntime, "stale watcher runtime");
-  runScriptCommand(join(tmpDir, "MissingForUninstall.app"), ["uninstall-watcher"], uninstallMissingAppOutput, { HOME: uninstallMissingHome });
-  if (existsSync(uninstallMissingPlist) || existsSync(uninstallMissingRuntime)) {
-    fail("expected uninstall-watcher to remove watcher files even when Codex.app is missing", readOutput(uninstallMissingAppOutput));
+  const repairCleanupOutput = join(tmpDir, "repair-cleanup-output.txt");
+  const repairCleanupHome = join(tmpDir, "repair-cleanup-home");
+  const repairCleanupPlist = join(repairCleanupHome, "Library", "LaunchAgents", "com.codexfast.watcher.plist");
+  const repairCleanupRuntime = join(repairCleanupHome, "Library", "Application Support", "codexfast", "codexfast-watcher.js");
+  mkdirSync(join(repairCleanupHome, "Library", "LaunchAgents"), { recursive: true });
+  mkdirSync(join(repairCleanupHome, "Library", "Application Support", "codexfast"), { recursive: true });
+  writeFileSync(repairCleanupPlist, "stale watcher plist");
+  writeFileSync(repairCleanupRuntime, "stale watcher runtime");
+  runScriptCommand(join(tmpDir, "MissingForRepairCleanup.app"), ["repair"], repairCleanupOutput, { HOME: repairCleanupHome });
+  if (existsSync(repairCleanupPlist) || existsSync(repairCleanupRuntime)) {
+    fail("expected hidden repair compatibility command to remove watcher files even when Codex.app is missing", readOutput(repairCleanupOutput));
   }
-  assertContains(readOutput(uninstallMissingAppOutput), "Uninstalled watcher.", "expected uninstall-watcher to complete without app checks", readOutput(uninstallMissingAppOutput));
-  assertNotContains(readOutput(uninstallMissingAppOutput), "Codex resources directory not found", "expected uninstall-watcher to skip Codex.app resource checks", readOutput(uninstallMissingAppOutput));
+  assertContains(readOutput(repairCleanupOutput), "Removed legacy auto-repair watcher.", "expected hidden repair compatibility command to report watcher cleanup", readOutput(repairCleanupOutput));
+  assertNotContains(readOutput(repairCleanupOutput), "Codex resources directory not found", "expected hidden repair compatibility command to skip Codex.app resource checks", readOutput(repairCleanupOutput));
 
   const unsupportedRepairNoToolsApp = join(tmpDir, "UnsupportedRepairNoTools.app");
   const unsupportedRepairNoToolsOutput = join(tmpDir, "unsupported-repair-no-tools-output.txt");
   const noToolsPath = join(tmpDir, "no-tools-path");
   mkdirSync(noToolsPath, { recursive: true });
   prepareArchivedFakeApp(unsupportedRepairNoToolsApp, join(tmpDir, "unsupported-repair-no-tools-assets"), "99.0.0", "9999");
-  runScriptCommand(unsupportedRepairNoToolsApp, ["repair", "--quiet"], unsupportedRepairNoToolsOutput, { PATH: noToolsPath });
+  runLegacyTool(unsupportedRepairNoToolsApp, "repair", unsupportedRepairNoToolsOutput, { PATH: noToolsPath });
   assertContains(readOutput(unsupportedRepairNoToolsOutput), "Compatibility: unsupported", "expected repair to read unsupported compatibility before patch prerequisites", readOutput(unsupportedRepairNoToolsOutput));
   assertContains(readOutput(unsupportedRepairNoToolsOutput), "Repair skipped because this Codex.app build is unsupported.", "expected unsupported repair to skip without patch prerequisites", readOutput(unsupportedRepairNoToolsOutput));
   assertNotContains(readOutput(unsupportedRepairNoToolsOutput), "npm not found", "expected unsupported repair to skip before npm checks", readOutput(unsupportedRepairNoToolsOutput));
@@ -449,7 +465,7 @@ function main(): void {
   const partial26417Resources = join(partial26417App, "Contents", "Resources");
   const partial26417Output = join(tmpDir, "apply-26417-partial-output.txt");
   prepareArchivedFakeApp(partial26417App, join(tmpDir, "supported-26417-partial-assets"), "26.417.41555", "1858", "26417-partial");
-  runScript(partial26417App, "3\n\nq\n", partial26417Output);
+  runLegacyTool(partial26417App, "apply", partial26417Output);
   assertCodesignCalls(1, partial26417Output);
   assertNoPersistentUnpackDir(partial26417Resources, partial26417Output);
   assertFakeAsarJsParses(join(partial26417Resources, "app.asar"));
@@ -689,7 +705,7 @@ function main(): void {
   const sparkleBridgeApplyOutput = join(tmpDir, "sparkle-bridge-apply-output.txt");
   const sparkleBridgeRestoreOutput = join(tmpDir, "sparkle-bridge-restore-output.txt");
   prepareArchivedFakeApp(sparkleBridgeApp, join(tmpDir, "sparkle-bridge-assets"), "26.506.31421", "2620", "26506-2620");
-  runScriptCommand(sparkleBridgeApp, ["apply"], sparkleBridgeApplyOutput);
+  runLegacyTool(sparkleBridgeApp, "apply", sparkleBridgeApplyOutput);
   assertContains(
     readOutput(sparkleBridgeApplyOutput),
     "Updated Sparkle public EdDSA key for in-app updates.",
@@ -701,7 +717,7 @@ function main(): void {
   }
   assertCodesignCalls(1, sparkleBridgeApplyOutput);
   resetNativeToolCalls();
-  runScriptCommand(sparkleBridgeApp, ["restore"], sparkleBridgeRestoreOutput);
+  runLegacyTool(sparkleBridgeApp, "restore", sparkleBridgeRestoreOutput);
   if (readInfoPlistSparklePublicEdKey(sparkleBridgeApp) === codex26513SparklePublicEdKey) {
     fail("expected restore to restore the original Sparkle public key", readFileSync(join(sparkleBridgeApp, "Contents", "Info.plist"), "utf8"));
   }
@@ -720,7 +736,7 @@ function main(): void {
     "2620",
     "26506-2620",
   );
-  runScriptCommand(sparkleBridgeAlreadyPatchedApp, ["apply"], join(tmpDir, "sparkle-bridge-already-patched-first-output.txt"));
+  runLegacyTool(sparkleBridgeAlreadyPatchedApp, "apply", join(tmpDir, "sparkle-bridge-already-patched-first-output.txt"));
   writeInfoPlist(
     sparkleBridgeAlreadyPatchedApp,
     readInfoPlistHash(sparkleBridgeAlreadyPatchedApp),
@@ -729,7 +745,7 @@ function main(): void {
     "com.openai.codex",
   );
   resetNativeToolCalls();
-  runScriptCommand(sparkleBridgeAlreadyPatchedApp, ["repair", "--quiet"], sparkleBridgeAlreadyPatchedOutput);
+  runLegacyTool(sparkleBridgeAlreadyPatchedApp, "repair", sparkleBridgeAlreadyPatchedOutput);
   assertContains(
     readOutput(sparkleBridgeAlreadyPatchedOutput),
     "Updated Sparkle public EdDSA key for in-app updates.",
@@ -747,7 +763,7 @@ function main(): void {
   const quietUnsupportedArchiveBefore = readFileSync(quietUnsupportedRepairArchive);
   const quietUnsupportedHashBefore = readInfoPlistHash(quietUnsupportedRepairApp);
   resetNativeToolCalls();
-  runScriptCommand(quietUnsupportedRepairApp, ["repair", "--quiet"], quietUnsupportedRepairOutput);
+  runLegacyTool(quietUnsupportedRepairApp, "repair", quietUnsupportedRepairOutput);
   assertNoCodesignCalls(quietUnsupportedRepairOutput);
   assertNoNpmCalls(quietUnsupportedRepairOutput);
   assertNoTccutilCalls(quietUnsupportedRepairOutput);
@@ -772,7 +788,7 @@ function main(): void {
   const repairSecondOutput = join(tmpDir, "repair-second-output.txt");
   prepareArchivedFakeApp(idempotentRepairApp, join(tmpDir, "idempotent-repair-assets"), "26.429.61741", "2429", "26429-2345");
   resetNativeToolCalls();
-  runScriptCommand(idempotentRepairApp, ["repair", "--quiet"], repairFirstOutput);
+  runLegacyTool(idempotentRepairApp, "repair", repairFirstOutput);
   assertCodesignCalls(1, repairFirstOutput);
   assertTccutilCallContains("reset ScreenCapture com.openai.codex", repairFirstOutput);
   assertApplyState26429Build2345(idempotentRepairArchive);
@@ -780,7 +796,7 @@ function main(): void {
   const repairedArchive = readFileSync(idempotentRepairArchive);
   const repairedHash = readInfoPlistHash(idempotentRepairApp);
   resetNativeToolCalls();
-  runScriptCommand(idempotentRepairApp, ["repair", "--quiet"], repairSecondOutput);
+  runLegacyTool(idempotentRepairApp, "repair", repairSecondOutput);
   assertNoCodesignCalls(repairSecondOutput);
   assertNoTccutilCalls(repairSecondOutput);
   if (!readFileSync(idempotentRepairArchive).equals(repairedArchive)) {
@@ -791,52 +807,47 @@ function main(): void {
   }
   assertContains(readOutput(repairSecondOutput), "No patch changes were needed; leaving app.asar and signature untouched.", "expected second repair to report no archive rewrite", readOutput(repairSecondOutput));
 
-  const watcherApp = join(tmpDir, "WatcherInstall.app");
-  const watcherOutput = join(tmpDir, "watcher-install-output.txt");
-  const watcherHome = join(tmpDir, "watcher-home");
-  prepareArchivedFakeApp(watcherApp, join(tmpDir, "watcher-install-assets"), "26.429.61741", "2429", "26429-2345");
+  const launchCleanupWatcherApp = join(tmpDir, "LaunchCleanupWatcher.app");
+  const launchCleanupWatcherOutput = join(tmpDir, "launch-cleanup-watcher-output.txt");
+  const launchCleanupWatcherHome = join(tmpDir, "launch-cleanup-watcher-home");
+  const launchCleanupWatcherPlist = join(launchCleanupWatcherHome, "Library", "LaunchAgents", "com.codexfast.watcher.plist");
+  const launchCleanupWatcherRuntime = join(launchCleanupWatcherHome, "Library", "Application Support", "codexfast", "codexfast-watcher.js");
+  prepareArchivedFakeApp(launchCleanupWatcherApp, join(tmpDir, "launch-cleanup-watcher-assets"), "26.513.20950", "2816", "26513-2816");
+  mkdirSync(join(launchCleanupWatcherHome, "Library", "LaunchAgents"), { recursive: true });
+  mkdirSync(join(launchCleanupWatcherHome, "Library", "Application Support", "codexfast"), { recursive: true });
+  writeFileSync(launchCleanupWatcherPlist, "stale watcher plist");
+  writeFileSync(launchCleanupWatcherRuntime, "stale watcher runtime");
   resetNativeToolCalls();
-  runScriptCommand(watcherApp, ["install-watcher"], watcherOutput, { HOME: watcherHome });
-  const watcherPlist = join(watcherHome, "Library", "LaunchAgents", "com.codexfast.watcher.plist");
-  const watcherRuntime = join(watcherHome, "Library", "Application Support", "codexfast", "codexfast-watcher.js");
-  if (!existsSync(watcherPlist)) {
-    fail("expected install-watcher to create a launchd plist", readOutput(watcherOutput));
+  runScriptCommand(launchCleanupWatcherApp, ["launch"], launchCleanupWatcherOutput, {
+    CODEXFAST_TEST_RUNTIME_LAUNCH_SUCCESS: "1",
+    HOME: launchCleanupWatcherHome,
+  });
+  if (existsSync(launchCleanupWatcherPlist) || existsSync(launchCleanupWatcherRuntime)) {
+    fail("expected launch to remove stale auto-repair watcher files", readOutput(launchCleanupWatcherOutput));
   }
-  if (!existsSync(watcherRuntime)) {
-    fail("expected install-watcher to create a watcher runner", readOutput(watcherOutput));
-  }
-  const watcherPlistText = readFileSync(watcherPlist, "utf8");
-  const watcherRuntimeText = readFileSync(watcherRuntime, "utf8");
-  assertContains(watcherPlistText, "<key>WatchPaths</key>", "expected watcher plist to use WatchPaths", watcherPlistText);
-  assertContains(watcherPlistText, join(watcherApp, "Contents", "Resources", "app.asar"), "expected watcher plist to watch app.asar", watcherPlistText);
-  assertContains(watcherPlistText, watcherRuntime, "expected watcher plist to run the local watcher runner", watcherPlistText);
-  assertNotContains(watcherPlistText, "<string>repair</string>", "expected watcher plist not to pass repair as a runner argument", watcherPlistText);
-  assertNotContains(watcherPlistText, "--quiet", "expected new watcher plists not to use the legacy quiet marker", watcherPlistText);
-  assertContains(watcherRuntimeText, "codexfast@latest", "expected watcher runner to use the latest published codexfast package", watcherRuntimeText);
-  assertContains(watcherRuntimeText, "repair", "expected watcher runner to run repair", watcherRuntimeText);
-  assertNotContains(watcherRuntimeText, "__PATCHER_SOURCE__", "expected watcher runner not to copy the full generated CLI snapshot", watcherRuntimeText);
-  assertContains(watcherPlistText, "<key>ThrottleInterval</key>", "expected watcher plist to throttle relaunches", watcherPlistText);
-  assertNotContains(watcherPlistText, "StandardOutPath", "expected watcher plist not to write stdout to a log file", watcherPlistText);
-  assertNotContains(watcherPlistText, "StandardErrorPath", "expected watcher plist not to write stderr to a log file", watcherPlistText);
-  assertNotContains(watcherPlistText, "watcher.log", "expected watcher plist not to create a watcher log file", watcherPlistText);
-  assertLaunchctlCallContains("bootstrap", watcherOutput);
+  assertContains(readOutput(launchCleanupWatcherOutput), "Removed legacy auto-repair watcher.", "expected launch to report stale watcher cleanup", readOutput(launchCleanupWatcherOutput));
+  assertLaunchctlCallContains("bootout", launchCleanupWatcherOutput);
+  assertNoCodesignCalls(launchCleanupWatcherOutput);
+  assertNoTccutilCalls(launchCleanupWatcherOutput);
 
   const restoreUninstallsWatcherApp = join(tmpDir, "RestoreUninstallsWatcher.app");
   const restoreUninstallsWatcherArchive = join(restoreUninstallsWatcherApp, "Contents", "Resources", "app.asar");
   const restoreUninstallsWatcherHome = join(tmpDir, "restore-uninstalls-watcher-home");
-  const restoreUninstallsWatcherInstallOutput = join(tmpDir, "restore-uninstalls-watcher-install-output.txt");
   const restoreUninstallsWatcherApplyOutput = join(tmpDir, "restore-uninstalls-watcher-apply-output.txt");
   const restoreUninstallsWatcherOutput = join(tmpDir, "restore-uninstalls-watcher-output.txt");
   prepareArchivedFakeApp(restoreUninstallsWatcherApp, join(tmpDir, "restore-uninstalls-watcher-assets"), "26.429.61741", "2429", "26429-2345");
-  runScriptCommand(restoreUninstallsWatcherApp, ["install-watcher"], restoreUninstallsWatcherInstallOutput, { HOME: restoreUninstallsWatcherHome });
   const restoreUninstallsWatcherPlist = join(restoreUninstallsWatcherHome, "Library", "LaunchAgents", "com.codexfast.watcher.plist");
   const restoreUninstallsWatcherRuntime = join(restoreUninstallsWatcherHome, "Library", "Application Support", "codexfast", "codexfast-watcher.js");
+  mkdirSync(join(restoreUninstallsWatcherHome, "Library", "LaunchAgents"), { recursive: true });
+  mkdirSync(join(restoreUninstallsWatcherHome, "Library", "Application Support", "codexfast"), { recursive: true });
+  writeFileSync(restoreUninstallsWatcherPlist, "stale watcher plist");
+  writeFileSync(restoreUninstallsWatcherRuntime, "stale watcher runtime");
   if (!existsSync(restoreUninstallsWatcherPlist) || !existsSync(restoreUninstallsWatcherRuntime)) {
-    fail("expected install-watcher to create files before restore", readOutput(restoreUninstallsWatcherInstallOutput));
+    fail("expected stale watcher files before restore", "");
   }
-  runScriptCommand(restoreUninstallsWatcherApp, ["apply"], restoreUninstallsWatcherApplyOutput, { HOME: restoreUninstallsWatcherHome });
+  runLegacyTool(restoreUninstallsWatcherApp, "apply", restoreUninstallsWatcherApplyOutput, { HOME: restoreUninstallsWatcherHome });
   assertApplyState26429Build2345(restoreUninstallsWatcherArchive);
-  runScriptCommand(restoreUninstallsWatcherApp, ["restore"], restoreUninstallsWatcherOutput, { HOME: restoreUninstallsWatcherHome });
+  runLegacyTool(restoreUninstallsWatcherApp, "restore", restoreUninstallsWatcherOutput, { HOME: restoreUninstallsWatcherHome });
   if (existsSync(restoreUninstallsWatcherPlist) || existsSync(restoreUninstallsWatcherRuntime)) {
     fail("expected restore to remove the auto-repair watcher before restoring app.asar", readOutput(restoreUninstallsWatcherOutput));
   }
@@ -848,12 +859,12 @@ function main(): void {
   const inlineResources = join(inlineApp, "Contents", "Resources");
   const inlineArchive = join(inlineResources, "app.asar");
   prepareArchivedFakeApp(inlineApp, join(tmpDir, "supported-26422-2080-inline-assets"), "26.422.21637", "2056", "26422");
-  runScript(inlineApp, "3\n\nq\n", join(tmpDir, "apply-26422-2080-inline-output.txt"));
+  runLegacyTool(inlineApp, "apply", join(tmpDir, "apply-26422-2080-inline-output.txt"));
   assertApplyState26422(inlineArchive);
   rmSync(join(inlineResources, "app.asar1"), { force: true });
   writeInfoPlist(inlineApp, readFakeAsarHeaderHash(inlineArchive), "26.422.30944", "2080");
   const inlineRestoreOutput = join(tmpDir, "restore-26422-2080-inline-output.txt");
-  runScript(inlineApp, "4\n\nq\n", inlineRestoreOutput);
+  runLegacyTool(inlineApp, "restore", inlineRestoreOutput);
   assertNoPersistentUnpackDir(inlineResources, inlineRestoreOutput);
   assertFakeAsarJsParses(inlineArchive);
   assertGuardedState26422(inlineArchive, "26.422 build 2080 inline restore from 0.5.2 state");
@@ -865,14 +876,14 @@ function main(): void {
   const legacyBackupOutput = join(tmpDir, "legacy-file-backup-restore-output.txt");
   const legacyBackupExtracted = join(tmpDir, "legacy-file-backup-extracted");
   prepareArchivedFakeApp(legacyBackupApp, join(tmpDir, "legacy-file-backup-assets"));
-  runScript(legacyBackupApp, "3\n\nq\n", join(tmpDir, "legacy-file-backup-apply-output.txt"));
+  runLegacyTool(legacyBackupApp, "apply", join(tmpDir, "legacy-file-backup-apply-output.txt"));
   assertApplyState(legacyBackupArchive);
   rmSync(join(legacyBackupResources, "app.asar1"), { force: true });
   extractFakeAsar(legacyBackupArchive, legacyBackupExtracted);
   renameBackupSuffixes(legacyBackupExtracted, ".codexfast.bak", ".speed-setting.bak");
   writeFakeAsar(legacyBackupExtracted, legacyBackupArchive);
   writeInfoPlist(legacyBackupApp, readFakeAsarHeaderHash(legacyBackupArchive));
-  runScript(legacyBackupApp, "4\n\nq\n", legacyBackupOutput);
+  runLegacyTool(legacyBackupApp, "restore", legacyBackupOutput);
   assertFakeAsarJsParses(legacyBackupArchive);
   assertGuardedState(legacyBackupArchive, "legacy file backup restore");
   assertContains(readOutput(legacyBackupOutput), "restored backup: Speed setting", "expected restore to use legacy file-level backup suffix", readOutput(legacyBackupOutput));
@@ -892,11 +903,11 @@ function main(): void {
   writeFileSync(legacyMixedIndexFile, legacyMixedOriginalIndex.replace("A=O&&k,", "A=!1,"));
   writeFakeAsar(legacyMixedBackupExtracted, legacyMixedBackupArchive);
   writeInfoPlist(legacyMixedBackupApp, readFakeAsarHeaderHash(legacyMixedBackupArchive), "26.422.21637", "2056");
-  runScript(legacyMixedBackupApp, "3\n\nq\n", legacyMixedApplyOutput);
+  runLegacyTool(legacyMixedBackupApp, "apply", legacyMixedApplyOutput);
   assertFakeAsarJsParses(legacyMixedBackupArchive);
   assertApplyState26422(legacyMixedBackupArchive);
   rmSync(join(legacyMixedBackupResources, "app.asar1"), { force: true });
-  runScript(legacyMixedBackupApp, "4\n\nq\n", legacyMixedRestoreOutput);
+  runLegacyTool(legacyMixedBackupApp, "restore", legacyMixedRestoreOutput);
   assertFakeAsarJsParses(legacyMixedBackupArchive);
   assertGuardedState26422(legacyMixedBackupArchive, "legacy mixed file backup restore");
   assertContains(readOutput(legacyMixedRestoreOutput), "restored backup: Fast slash command", "expected restore to use existing legacy file backup without seeding a polluted new backup", readOutput(legacyMixedRestoreOutput));
@@ -919,7 +930,7 @@ function main(): void {
   );
   writeFakeAsar(legacyInlineApplyExtracted, legacyInlineApplyArchive);
   writeInfoPlist(legacyInlineApplyApp, readFakeAsarHeaderHash(legacyInlineApplyArchive));
-  runScript(legacyInlineApplyApp, "3\n\nq\n", legacyInlineApplyOutput);
+  runLegacyTool(legacyInlineApplyApp, "apply", legacyInlineApplyOutput);
   assertNoPersistentUnpackDir(legacyInlineApplyResources, legacyInlineApplyOutput);
   assertFakeAsarJsParses(legacyInlineApplyArchive);
   assertApplyState(legacyInlineApplyArchive);
@@ -929,7 +940,7 @@ function main(): void {
   const futureGptSkipApp = join(tmpDir, "FutureGptSkip.app");
   const futureGptSkipOutput = join(tmpDir, "status-future-gpt-skip-output.txt");
   prepareArchivedFakeApp(futureGptSkipApp, join(tmpDir, "future-gpt-skip-assets"), "26.500.0", "9999", "26422");
-  runScript(futureGptSkipApp, "2\n\nq\n", futureGptSkipOutput);
+  runLegacyTool(futureGptSkipApp, "status", futureGptSkipOutput);
   assertNotContains(readOutput(futureGptSkipOutput), "GPT-5.5 model", "expected post-26.422.30944 status to omit unpatched GPT-5.5 compatibility targets", readOutput(futureGptSkipOutput));
   resetCodesignCalls();
 
@@ -943,7 +954,7 @@ function main(): void {
   writeFileSync(activeTempFile, "active");
   const staleTime = new Date(Date.now() - 20 * 60 * 1000);
   utimesSync(staleTempFile, staleTime, staleTime);
-  runScript(staleTempApp, "2\n\nq\n", staleTempOutput);
+  runLegacyTool(staleTempApp, "status", staleTempOutput);
   if (existsSync(staleTempFile)) {
     fail("expected stale app.asar temp file to be removed during startup checks", readOutput(staleTempOutput));
   }
@@ -956,7 +967,7 @@ function main(): void {
   const legacyResources = join(legacyApp, "Contents", "Resources");
   const legacyOutput = join(tmpDir, "legacy-output.txt");
   prepareLegacyFakeApp(legacyApp, join(tmpDir, "legacy-unpacked-assets"), join(tmpDir, "legacy-assets"), "legacy-placeholder-hash");
-  runScript(legacyApp, "2\n\nq\n", legacyOutput);
+  runLegacyTool(legacyApp, "status", legacyOutput);
   assertCodesignCalls(1, legacyOutput);
   assertNoPersistentUnpackDir(legacyResources, legacyOutput);
   assertFakeAsarJsParses(join(legacyResources, "app.asar"));
@@ -974,7 +985,7 @@ function main(): void {
   prepareArchivedFakeApp(packFailApp, join(tmpDir, "pack-fail-assets"));
   const packFailOriginalArchive = readFileSync(packFailArchive);
   const packFailOriginalHash = readInfoPlistHash(packFailApp);
-  runScriptWithAsarPackFailure(packFailApp, "3\n\nq\n", packFailOutput);
+  runLegacyTool(packFailApp, "apply", packFailOutput, { CODEXFAST_TEST_ASAR_PACK_FAIL: "1", CODEXFAST_TEST_ALLOW_NONZERO: "1" });
   assertNoPersistentUnpackDir(packFailResources, packFailOutput);
   if (!readFileSync(packFailArchive).equals(packFailOriginalArchive)) {
     fail("expected failed temp pack to leave installed app.asar unchanged", readOutput(packFailOutput));
@@ -998,7 +1009,7 @@ function main(): void {
   const legacyPackFailOriginalArchive = readFileSync(legacyPackFailArchive);
   const legacyPackFailOriginalHash = readInfoPlistHash(legacyPackFailApp);
   const legacyPackFailTempDirs = listCodexfastTempDirs();
-  runScriptWithStartupAsarPackFailure(legacyPackFailApp, "2\n\nq\n", legacyPackFailOutput);
+  runLegacyTool(legacyPackFailApp, "status", legacyPackFailOutput, { CODEXFAST_TEST_ASAR_PACK_FAIL: "1", CODEXFAST_TEST_ALLOW_NONZERO: "1" });
   assertNoNewCodexfastTempDirs(legacyPackFailTempDirs, legacyPackFailOutput);
   if (!existsSync(legacyPackFailUnpackedDir)) {
     fail("expected failed legacy temp pack to preserve Resources/app", readOutput(legacyPackFailOutput));
@@ -1016,7 +1027,7 @@ function main(): void {
   const extractFailOutput = join(tmpDir, "extract-fail-output.txt");
   prepareArchivedFakeApp(extractFailApp, join(tmpDir, "extract-fail-assets"));
   const extractFailTempDirs = listCodexfastTempDirs();
-  runScriptWithAsarExtractFailure(extractFailApp, "3\n\nq\n", extractFailOutput);
+  runLegacyTool(extractFailApp, "apply", extractFailOutput, { CODEXFAST_TEST_ASAR_EXTRACT_FAIL: "1", CODEXFAST_TEST_ALLOW_NONZERO: "1" });
   assertNoNewCodexfastTempDirs(extractFailTempDirs, extractFailOutput);
   assertContains(readOutput(extractFailOutput), "Failed to unpack app.asar.", "expected extract failure to be reported", readOutput(extractFailOutput));
   assertContains(readOutput(extractFailOutput), "Exit code: 1", "expected failed extract to return exit code 1", readOutput(extractFailOutput));
@@ -1030,7 +1041,7 @@ function main(): void {
   const integrityFailOriginalArchive = readFileSync(integrityFailArchive);
   const integrityFailOriginalHash = readInfoPlistHash(integrityFailApp);
   chmodSync(join(integrityFailApp, "Contents", "Info.plist"), 0o444);
-  runScriptAllowFailure(integrityFailApp, "3\n\nq\n", integrityFailOutput);
+  runLegacyTool(integrityFailApp, "apply", integrityFailOutput, { CODEXFAST_TEST_ALLOW_NONZERO: "1" });
   chmodSync(join(integrityFailApp, "Contents", "Info.plist"), 0o644);
   if (!readFileSync(integrityFailArchive).equals(integrityFailOriginalArchive)) {
     fail("expected failed integrity update during apply to restore the previous app.asar", readOutput(integrityFailOutput));
@@ -1048,11 +1059,11 @@ function main(): void {
   const restoreIntegrityApplyOutput = join(tmpDir, "restore-integrity-fail-apply-output.txt");
   const restoreIntegrityOutput = join(tmpDir, "restore-integrity-fail-output.txt");
   prepareArchivedFakeApp(restoreIntegrityFailApp, join(tmpDir, "restore-integrity-fail-assets"));
-  runScript(restoreIntegrityFailApp, "3\n\nq\n", restoreIntegrityApplyOutput);
+  runLegacyTool(restoreIntegrityFailApp, "apply", restoreIntegrityApplyOutput);
   const restoreIntegrityPatchedArchive = readFileSync(restoreIntegrityFailArchive);
   const restoreIntegrityPatchedHash = readInfoPlistHash(restoreIntegrityFailApp);
   chmodSync(join(restoreIntegrityFailApp, "Contents", "Info.plist"), 0o444);
-  runScriptAllowFailure(restoreIntegrityFailApp, "4\n\nq\n", restoreIntegrityOutput);
+  runLegacyTool(restoreIntegrityFailApp, "restore", restoreIntegrityOutput, { CODEXFAST_TEST_ALLOW_NONZERO: "1" });
   chmodSync(join(restoreIntegrityFailApp, "Contents", "Info.plist"), 0o644);
   if (!readFileSync(restoreIntegrityFailArchive).equals(restoreIntegrityPatchedArchive)) {
     fail("expected failed integrity update during archive restore to restore the previous app.asar", readOutput(restoreIntegrityOutput));
@@ -1071,7 +1082,7 @@ function main(): void {
   prepareArchivedFakeApp(missingBundleIdApp, join(tmpDir, "missing-bundle-id-assets"));
   writeInfoPlist(missingBundleIdApp, readFakeAsarHeaderHash(missingBundleIdArchive), "26.415.40636", "1799", null);
   resetTccutilCalls();
-  runScript(missingBundleIdApp, "3\n\nq\n", missingBundleIdOutput);
+  runLegacyTool(missingBundleIdApp, "apply", missingBundleIdOutput);
   assertNoTccutilCalls(missingBundleIdOutput);
   assertContains(readOutput(missingBundleIdOutput), "Could not reset macOS screen recording permission because CFBundleIdentifier was not found.", "expected missing bundle id to skip TCC reset", readOutput(missingBundleIdOutput));
   resetCodesignCalls();
@@ -1080,7 +1091,7 @@ function main(): void {
   const unsupportedResources = join(unsupportedApp, "Contents", "Resources");
   const unsupportedOutput = join(tmpDir, "unsupported-output.txt");
   prepareArchivedFakeApp(unsupportedApp, join(tmpDir, "unsupported-assets"), "99.0.0", "9999");
-  runScript(unsupportedApp, "3\n\nq\n", unsupportedOutput);
+  runLegacyTool(unsupportedApp, "apply", unsupportedOutput, { CODEXFAST_TEST_ALLOW_NONZERO: "1" });
   assertNoPersistentUnpackDir(unsupportedResources, unsupportedOutput);
   const unsupportedText = readOutput(unsupportedOutput);
   assertNotContains(unsupportedText, "Running local ad-hoc re-sign", "expected unsupported versions to be blocked before re-signing", unsupportedText);
@@ -1097,7 +1108,7 @@ function main(): void {
   const unsupportedLegacyOutput = join(tmpDir, "unsupported-legacy-output.txt");
   prepareLegacyFakeApp(unsupportedLegacyApp, join(tmpDir, "unsupported-legacy-unpacked-assets"), join(tmpDir, "unsupported-legacy-assets"), "unsupported-legacy-placeholder-hash");
   writeInfoPlist(unsupportedLegacyApp, "unsupported-legacy-placeholder-hash", "99.0.0", "9999");
-  runScript(unsupportedLegacyApp, "3\n\nq\n", unsupportedLegacyOutput);
+  runLegacyTool(unsupportedLegacyApp, "apply", unsupportedLegacyOutput, { CODEXFAST_TEST_ALLOW_NONZERO: "1" });
   const unsupportedLegacyText = readOutput(unsupportedLegacyOutput);
   assertContains(unsupportedLegacyText, "Compatibility: unsupported", "expected unsupported legacy compatibility status in output", unsupportedLegacyText);
   assertContains(unsupportedLegacyText, "Enable custom API features is blocked for this Codex.app version.", "expected unsupported legacy apply to be blocked", unsupportedLegacyText);
@@ -1120,7 +1131,7 @@ function main(): void {
   writeFileSync(join(missingAssetsSource, "other", "noop.js"), "const noop=true;");
   writeFakeAsar(missingAssetsSource, join(missingAssetsResources, "app.asar"));
   writeInfoPlist(missingAssetsApp, readFakeAsarHeaderHash(join(missingAssetsResources, "app.asar")));
-  runScriptAllowFailure(missingAssetsApp, "2\n\nq\n", missingAssetsOutput);
+  runLegacyTool(missingAssetsApp, "status", missingAssetsOutput, { CODEXFAST_TEST_ALLOW_NONZERO: "1" });
   assertContains(readOutput(missingAssetsOutput), "Assets directory not found:", "expected missing assets to be reported without a stack trace", readOutput(missingAssetsOutput));
   assertContains(readOutput(missingAssetsOutput), "Exit code: 1", "expected missing assets to return exit code 1", readOutput(missingAssetsOutput));
   assertNotContains(readOutput(missingAssetsOutput), "ENOENT", "expected missing assets to avoid raw readdirSync ENOENT", readOutput(missingAssetsOutput));
@@ -1130,7 +1141,7 @@ function main(): void {
   const failingResources = join(failingApp, "Contents", "Resources");
   const failingOutput = join(tmpDir, "failing-output.txt");
   prepareArchivedFakeApp(failingApp, join(tmpDir, "failing-assets"));
-  runScriptWithCodesignFailure(failingApp, "3\n\nq\n", failingOutput);
+  runLegacyTool(failingApp, "apply", failingOutput, { CODEXFAST_TEST_CODESIGN_FAIL: "1", CODEXFAST_TEST_ALLOW_NONZERO: "1" });
   assertNoPersistentUnpackDir(failingResources, failingOutput);
   assertFakeAsarJsParses(join(failingResources, "app.asar"));
   const failingText = readOutput(failingOutput);
@@ -1142,7 +1153,7 @@ function main(): void {
   const verifyFailingResources = join(verifyFailingApp, "Contents", "Resources");
   const verifyFailingOutput = join(tmpDir, "verify-failing-output.txt");
   prepareArchivedFakeApp(verifyFailingApp, join(tmpDir, "verify-failing-assets"));
-  runScriptWithCodesignVerifyFailure(verifyFailingApp, "3\n\nq\n", verifyFailingOutput);
+  runLegacyTool(verifyFailingApp, "apply", verifyFailingOutput, { CODEXFAST_TEST_CODESIGN_VERIFY_FAIL: "1", CODEXFAST_TEST_ALLOW_NONZERO: "1" });
   assertNoPersistentUnpackDir(verifyFailingResources, verifyFailingOutput);
   assertFakeAsarJsParses(join(verifyFailingResources, "app.asar"));
   assertCodesignCallContains(`--verify --deep --strict --verbose=2 ${verifyFailingApp}`, verifyFailingOutput);

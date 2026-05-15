@@ -1177,6 +1177,29 @@ function removeWatcherFiles(options: { quietLaunchctl?: boolean; reportRemoved?:
   return true;
 }
 
+function removeLegacyWatcherFiles(options: { quietLaunchctl?: boolean; reportRemoved?: boolean } = {}): boolean {
+  const hadWatcherFiles = existsSync(watcherPlistPath()) || existsSync(watcherCliPath());
+  if (!removeWatcherFiles({ quietLaunchctl: options.quietLaunchctl })) {
+    return false;
+  }
+  if (hadWatcherFiles && options.reportRemoved) {
+    printLine("Removed legacy auto-repair watcher.");
+  }
+  return true;
+}
+
+function cleanupLegacyWatcherCommand(): number {
+  if (!removeLegacyWatcherFiles({ quietLaunchctl: true, reportRemoved: true })) {
+    printLine("Failed to remove legacy auto-repair watcher.");
+    printLine("");
+    printLine("Exit code: 1");
+    return 1;
+  }
+  printLine("");
+  printLine("Exit code: 0");
+  return 0;
+}
+
 function parseApplySummary(output: string): ApplySummary | null {
   const match = output.match(/summary: changed=(\d+), alreadyPatched=(\d+)/);
   if (!match) {
@@ -1899,6 +1922,13 @@ async function runRuntimeLaunch(): Promise<number> {
     return 1;
   }
 
+  if (!removeLegacyWatcherFiles({ quietLaunchctl: true, reportRemoved: true })) {
+    printLine("Failed to remove legacy auto-repair watcher.");
+    printLine("");
+    printLine("Exit code: 1");
+    return 1;
+  }
+
   const runningCheck = checkCodexRunning();
   if (!runningCheck.ok) {
     printLine(runningCheck.message);
@@ -2132,13 +2162,7 @@ function printUsage(): void {
   printLine("  codexfast <command>");
   printLine("");
   printLine("Commands:");
-  printLine("  status             Check version, compatibility, and feature state");
   printLine("  launch             Launch Codex with runtime patches (recommended)");
-  printLine("  apply              Apply legacy bundle patches (fallback)");
-  printLine("  repair             Safely re-apply missing patches; no-op on unsupported or already patched builds");
-  printLine("  restore            Restore legacy bundle patch backups");
-  printLine("  install-watcher    Install the macOS launchd auto-repair watcher");
-  printLine("  uninstall-watcher  Remove the auto-repair watcher");
   printLine("  version            Print the codexfast version");
   printLine("  help               Show this help");
 }
@@ -2156,11 +2180,6 @@ async function showMenu(): Promise<number> {
       printLine("codexfast");
       printLine("");
       printLine("1) Launch Codex with runtime patches (recommended)");
-      printLine("2) Check current status");
-      printLine("3) Apply legacy bundle patches (fallback)");
-      printLine("4) Restore legacy bundle patch backups");
-      printLine("5) Install auto-repair watcher");
-      printLine("6) Uninstall auto-repair watcher");
       printLine("q) Quit");
       printLine("");
 
@@ -2168,26 +2187,6 @@ async function showMenu(): Promise<number> {
       switch (choice) {
         case "1":
           await runRuntimeLaunch();
-          await rl.question("Press Enter to continue...");
-          break;
-        case "2":
-          runEmbeddedTool("status");
-          await rl.question("Press Enter to continue...");
-          break;
-        case "3":
-          runEmbeddedTool("apply");
-          await rl.question("Press Enter to continue...");
-          break;
-        case "4":
-          runEmbeddedTool("restore");
-          await rl.question("Press Enter to continue...");
-          break;
-        case "5":
-          installWatcher();
-          await rl.question("Press Enter to continue...");
-          break;
-        case "6":
-          uninstallWatcher();
           await rl.question("Press Enter to continue...");
           break;
         case "q":
@@ -2205,10 +2204,13 @@ async function showMenu(): Promise<number> {
 }
 
 async function main(): Promise<number> {
-  // Keep accepting the old watcher marker so existing launchd plists and user
-  // scripts keep working, but do not advertise it for new installs.
+  // Keep accepting the old watcher marker so existing launchd plists can reach
+  // the cleanup-only compatibility path, but do not advertise it for new use.
   const args = process.argv.slice(2).filter((arg) => arg !== "--quiet");
   const command = args[0] ?? "";
+  const legacySelftestPrefix = "__selftest-legacy-";
+  const legacySelftestAction = command.startsWith(legacySelftestPrefix) ? command.slice(legacySelftestPrefix.length) : "";
+  const legacySelftestActions = new Set(["status", "apply", "repair", "restore"]);
 
   if (command === "__selftest-cdp-frame") {
     return runCdpFrameSelfTest();
@@ -2219,6 +2221,10 @@ async function main(): Promise<number> {
   if (command === "__selftest-runtime-patch-body") {
     return runRuntimePatchBodySelfTest();
   }
+  if (legacySelftestAction && !legacySelftestActions.has(legacySelftestAction)) {
+    printUsage();
+    return 1;
+  }
 
   if (command === "-h" || command === "--help" || command === "help") {
     printUsage();
@@ -2228,30 +2234,26 @@ async function main(): Promise<number> {
     printVersion();
     return 0;
   }
-  if (command === "uninstall-watcher") {
-    return uninstallWatcher();
+  if (command === "repair") {
+    return cleanupLegacyWatcherCommand();
+  }
+  if (command && command !== "launch" && !legacySelftestAction) {
+    printUsage();
+    return 1;
   }
 
-  if (!checkRequirements({ command })) {
+  const effectiveCommand = legacySelftestAction || command;
+  if (!checkRequirements({ command: effectiveCommand })) {
     cleanupTempWorkspace();
     return 1;
   }
 
-  if (command) {
-    switch (command) {
-      case "status":
-      case "apply":
-      case "repair":
-      case "restore":
-        return runEmbeddedTool(command);
-      case "launch":
-        return await runRuntimeLaunch();
-      case "install-watcher":
-        return installWatcher();
-      default:
-        printUsage();
-        return 1;
-    }
+  if (legacySelftestAction) {
+    return runEmbeddedTool(legacySelftestAction);
+  }
+
+  if (command === "launch") {
+    return await runRuntimeLaunch();
   }
 
   return showMenu();

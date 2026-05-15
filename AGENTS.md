@@ -4,7 +4,7 @@ Repository guidance for `codexfast`.
 
 ## Project Scope
 
-- This repo ships a single-file macOS patcher for `Codex.app`.
+- This repo ships a single-file macOS runtime launcher for `Codex.app`.
 - The published entrypoint is generated as [`bin/codexfast`](./bin/codexfast).
 - Maintain TypeScript source under [`src/`](./src/) and regenerate the entrypoint with [`scripts/build-codexfast.mts`](./scripts/build-codexfast.mts).
 - The main regression test is [`test/re-sign-flow.sh`](./test/re-sign-flow.sh).
@@ -14,7 +14,7 @@ Repository guidance for `codexfast`.
 - Start with [`docs/README.md`](./docs/README.md) for the long-lived docs index.
 - Read [`docs/feature-scope.md`](./docs/feature-scope.md) when you need the current supported feature paths before diving into bundle-specific implementation details.
 - Read [`docs/compatibility-matrix.md`](./docs/compatibility-matrix.md) before changing the whitelist or describing a Codex build as supported.
-- Read [`docs/patch-targets.md`](./docs/patch-targets.md) before changing regexes, target specs, or restore mapping.
+- Read [`docs/patch-targets.md`](./docs/patch-targets.md) before changing regexes, target specs, or internal restore mapping.
 - Read [`docs/troubleshooting.md`](./docs/troubleshooting.md) when the app fails to launch, a UI path breaks, `Plugins` remains partially unavailable, or repeated patch runs behave unexpectedly.
 - Read [`docs/real-app-validation.md`](./docs/real-app-validation.md) when claiming real installed-app compatibility.
 - Read [`docs/version-adaptation-playbook.md`](./docs/version-adaptation-playbook.md) when adapting to a new `Codex.app` build.
@@ -29,12 +29,12 @@ Repository guidance for `codexfast`.
 - Preserve the packed `app.asar` workflow. Do not reintroduce a persistent `Contents/Resources/app` unpacked layout.
 - Do not commit extracted Codex bundle files, temporary workspaces, or local inspection artifacts.
 - Use project-relative paths in docs and code; do not commit personal machine absolute paths.
-- Treat changes to patch signatures and restore logic as high risk. Update tests in the same change.
+- Treat changes to patch signatures and internal restore logic as high risk. Update tests in the same change.
 - Keep user-facing script output in English unless the task explicitly requires another language.
 
 ## Validation
 
-- Run `pnpm build:check`, `pnpm typecheck`, and `pnpm test` after changing patch, restore, archive, integrity-hash, or re-sign logic.
+- Run `pnpm build:check`, `pnpm typecheck`, and `pnpm test` after changing runtime launch, patch, restore, archive, integrity-hash, or re-sign logic.
 - If package metadata changes, also check `package.json` and `bin/codexfast`.
 - Do not claim macOS app behavior is fixed unless the regression test passes and the real-world limitation is stated clearly.
 - Update the relevant files under `docs/` when compatibility knowledge, bundle notes, or release process knowledge changes.
@@ -65,15 +65,11 @@ Use this checklist for every future Codex bundle adaptation or patch-signature u
   - every Plugins gate required by the target build, including sidebar access, page content, plugin detail redirects, install-button availability, and install-modal content where present
   - the GPT-5.5 model-list bridge and model query selector injection targets
   - unsupported-version blocking before unpack, backup, and re-sign
-  - restore symmetry for all patched paths
-- Confirm status output still reports:
-  - each supported target independently
-  - detected app version
-  - detected build
-  - compatibility state
+  - internal restore symmetry for all file-patch paths
 - Confirm runtime launch still:
   - requires Codex to be fully quit before launch
   - reports patched target labels on supported builds
+  - removes legacy auto-repair watcher files if they are present
   - leaves `app.asar`, `Info.plist`, and the app signature unchanged
   - fails closed without modifying the app when interception does not complete
 - Do not ship a change that enables only part of the combined Fast feature set.
@@ -90,6 +86,6 @@ Use this checklist for every future Codex bundle adaptation or patch-signature u
 
 ## Safety
 
-- This repo modifies a locally installed `/Applications/Codex.app`. Be explicit when a change affects a real app copy.
-- Preserve recovery paths: `app.asar1`, file-level backups, restore flow, and manual `codesign` fallback guidance.
+- Public `launch` should not modify a locally installed `/Applications/Codex.app`. Be explicit when any internal legacy path affects a real app copy.
+- Preserve internal recovery paths: `app.asar1`, file-level backups, restore flow, and manual `codesign` fallback guidance.
 - Prefer surgical diffs. Avoid unrelated refactors in the embedded Node patcher unless they directly support the requested fix.

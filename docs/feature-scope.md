@@ -8,7 +8,8 @@ Use it when you need a quick answer to "what does this repo actually enable?" be
 
 - `launch` is the recommended path. It starts Codex with a local CDP endpoint and applies the supported target patches in memory for that launched session only.
 - Runtime launch does not modify `app.asar`, `Info.plist`, the app bundle, or the app signature.
-- `apply` / `restore` remain available as legacy bundle patch fallbacks for users who need persistent on-disk changes.
+- Public legacy bundle patch commands are no longer exposed. The old file-patch and restore paths remain covered by internal regression tests so older patched installs can still be understood and recovered during development.
+- If a user previously installed the launchd auto-repair watcher, `launch` removes the legacy watcher files before starting Codex.
 
 ## Current Feature Set
 
@@ -31,9 +32,8 @@ Use it when you need a quick answer to "what does this repo actually enable?" be
 
 ### Sparkle in-app update bridge
 
-- On patched `26.506.31421` (`build 2620`) installs, `apply` and watcher `repair` update the app's `SUPublicEDKey` to the public EdDSA key used by `26.513.20950` (`build 2816`) and keep a `SUPublicEDKey.codexfast.bak` backup.
-- This is a build-specific compatibility bridge for Sparkle update validation after local ad-hoc signing. It does not replace Sparkle or guarantee future key rotations without another adaptation.
-- `restore` writes the backed-up key back when the backup exists.
+- Older legacy bundle patch flows used a build-specific `SUPublicEDKey` bridge for patched `26.506.31421` (`build 2620`) installs.
+- Runtime launch does not ad-hoc sign the app and does not need this bridge for new sessions.
 
 ### Plugins sidebar access for custom API users
 
@@ -45,10 +45,9 @@ Use it when you need a quick answer to "what does this repo actually enable?" be
 
 ### Browser-use native pipe peer-auth compatibility
 
-- Allows the browser-use native pipe to keep working after `codexfast` replaces the vendor code signature with a local ad-hoc signature.
+- Allows the browser-use native pipe to keep working when the local peer-auth failure is specifically `missing-code-signing-identity`.
 - The patch only maps the `missing-code-signing-identity` peer-auth rejection to an authorized result. Other native pipe peer-auth failures remain rejected.
-- This lowers the local native pipe peer verification strength for that one compatibility reason. It does not restore the OpenAI Developer ID signature.
-- `status` reports this target separately as `Browser-use native pipe peer auth`.
+- This lowers the local native pipe peer verification strength for that one compatibility reason. It does not disable native pipe peer auth entirely.
 
 ### GPT-5.5 model-list entry for custom API users
 
