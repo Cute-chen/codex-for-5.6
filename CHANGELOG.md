@@ -6,6 +6,10 @@ This project follows a simple release-oriented changelog format.
 
 ## [Unreleased]
 
+### Added
+
+- Added support for `Codex.app` `26.513.31313` (`build 2867`) after direct installed-bundle inspection confirmed the updated Settings Fast, `/fast`, composer `Intelligence` Speed menu, Plugins, and composer `@` plugin mention target shapes.
+
 ### Removed
 
 - Removed macOS ScreenCapture permission reset logic; current public launch does not re-sign the app.

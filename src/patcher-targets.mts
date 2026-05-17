@@ -44,9 +44,9 @@ const INTELLIGENCE_SPEED_GUARDED_SIGNATURE_QS =
 const INTELLIGENCE_SPEED_PATCHED_SIGNATURE_QS =
   /(let )([A-Za-z_$][\w$]*)=!0,([A-Za-z_$][\w$]*=(?:zr|fi)\([A-Za-z_$][\w$]*,n\),)/;
 const INTELLIGENCE_SPEED_GUARDED_SIGNATURE_QA =
-  /(let )([A-Za-z_$][\w$]*);([^;]{0,260}\?\(\2=)([A-Za-z_$][\w$]*)(\?\(0,[A-Za-z_$][\w$]*\.jsx\)\(KR,\{selectedServiceTier:[^}]+,isLoading:[^}]+,setServiceTier:[^}]+,onSelectComplete:[^}]+\}\):null,)/;
+  /(let )([A-Za-z_$][\w$]*);([^;]{0,260}\?\(\2=)([A-Za-z_$][\w$]*)(\?\(0,[A-Za-z_$][\w$]*\.jsx\)\([A-Za-z_$][\w$]*,\{selectedServiceTier:[^}]+,isLoading:[^}]+,setServiceTier:[^}]+,onSelectComplete:[^}]+\}\):null,)/;
 const INTELLIGENCE_SPEED_PATCHED_SIGNATURE_QA =
-  /(let )([A-Za-z_$][\w$]*);([^;]{0,260}\?\(\2=)!0(\?\(0,[A-Za-z_$][\w$]*\.jsx\)\(KR,\{selectedServiceTier:[^}]+,isLoading:[^}]+,setServiceTier:[^}]+,onSelectComplete:[^}]+\}\):null,)/;
+  /(let )([A-Za-z_$][\w$]*);([^;]{0,260}\?\(\2=)!0(\?\(0,[A-Za-z_$][\w$]*\.jsx\)\([A-Za-z_$][\w$]*,\{selectedServiceTier:[^}]+,isLoading:[^}]+,setServiceTier:[^}]+,onSelectComplete:[^}]+\}\):null,)/;
 const PLUGINS_SIDEBAR_GUARDED_SIGNATURE_OLD =
   /(\{authMethod:([A-Za-z_$][\w$]*)\}=[^,]+,[^]*?cf\(`533078438`\),)([A-Za-z_$][\w$]*)=\2===`apikey`,/;
 const PLUGINS_SIDEBAR_PATCHED_SIGNATURE_OLD =
@@ -78,9 +78,9 @@ const PLUGINS_SIDEBAR_GUARDED_SIGNATURE_26506_QO =
 const PLUGINS_SIDEBAR_PATCHED_SIGNATURE_26506_QO =
   /(\{authMethod:([A-Za-z_$][\w$]*)\}=[^,]+,)([A-Za-z_$][\w$]*)=Qo\(`533078438`\),([A-Za-z_$][\w$]*)=Xc\(\2\),([A-Za-z_$][\w$]*)=!1,([^]*?)([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*)&&([A-Za-z_$][\w$]*)([,;])/;
 const PLUGINS_SIDEBAR_GUARDED_SIGNATURE_26513 =
-  /(\{authMethod:([A-Za-z_$][\w$]*)\}=[^,]+,)([A-Za-z_$][\w$]*)=Is\(`533078438`\),([A-Za-z_$][\w$]*)=Ml\(\2\),([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*)&&\3&&\4,([A-Za-z_$][\w$]*)=(hl\(\{hostId:[^}]+\}\)),([A-Za-z_$][\w$]*)=\6&&\7&&!\4([,;])/;
+  /(\{authMethod:([A-Za-z_$][\w$]*)\}=[^,]+,)([A-Za-z_$][\w$]*)=((?:Is|ec)\(`533078438`\)),([A-Za-z_$][\w$]*)=((?:Ml|Xl)\(\2\)),([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*)&&\3&&\5,([A-Za-z_$][\w$]*)=((?:hl|Nl)\(\{hostId:[^}]+\}\)),([A-Za-z_$][\w$]*)=\8&&\9&&!\5([,;])/;
 const PLUGINS_SIDEBAR_PATCHED_SIGNATURE_26513 =
-  /(\{authMethod:([A-Za-z_$][\w$]*)\}=[^,]+,)([A-Za-z_$][\w$]*)=Is\(`533078438`\),([A-Za-z_$][\w$]*)=Ml\(\2\),([A-Za-z_$][\w$]*)=!1,([A-Za-z_$][\w$]*)=(hl\(\{hostId:[^}]+\}\)),([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*)&&\6([,;])/;
+  /(\{authMethod:([A-Za-z_$][\w$]*)\}=[^,]+,)([A-Za-z_$][\w$]*)=((?:Is|ec)\(`533078438`\)),([A-Za-z_$][\w$]*)=((?:Ml|Xl)\(\2\)),([A-Za-z_$][\w$]*)=!1,([A-Za-z_$][\w$]*)=((?:hl|Nl)\(\{hostId:[^}]+\}\)),([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*)&&\8([,;])/;
 const PLUGINS_PAGE_CONTENT_GUARDED_SIGNATURE =
   /(let )([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*),([A-Za-z_$][\w$]*),([A-Za-z_$][\w$]*);(if\(e\[\d+\]!==[A-Za-z_$][\w$]*\|\|e\[\d+\]!==\2\|\|)/;
 const PLUGINS_PAGE_CONTENT_PATCHED_SIGNATURE =
@@ -101,6 +101,10 @@ const COMPOSER_PLUGIN_MENTIONS_GUARDED_SIGNATURE =
   /(additionalMarketplaceKinds:)\[`shared-with-me`\]/;
 const COMPOSER_PLUGIN_MENTIONS_PATCHED_SIGNATURE =
   /(additionalMarketplaceKinds:)\[\]/;
+const COMPOSER_PLUGIN_MENTIONS_GUARDED_SIGNATURE_FLAGGED =
+  /(additionalMarketplaceKinds:)([A-Za-z_$][\w$]*)\?\[`shared-with-me`\]:\[\]/;
+const COMPOSER_PLUGIN_MENTIONS_PATCHED_SIGNATURE_FLAGGED =
+  /(additionalMarketplaceKinds:)([A-Za-z_$][\w$]*)\?\[\]:\[\]/;
 const MODEL_LIST_GUARDED_SIGNATURE =
   /("list-models-for-host":i9\()\(([A-Za-z_$][\w$]*),\{hostId:([A-Za-z_$][\w$]*),\.\.\.([A-Za-z_$][\w$]*)\}\)=>\2\.sendRequest\(`model\/list`,\4\)(\))/;
 const MODEL_LIST_PATCHED_SIGNATURE =
@@ -198,6 +202,42 @@ function restorePluginsSidebar26506Qo(
   delimiter: string,
 ): string {
   return `${prefix}${pluginsExperimentVariable}=Qo(\`533078438\`),${authGateVariable}=Xc(${authMethodVariable}),${disabledPluginsVariable}=${desktopNavVariable}&&${pluginsExperimentVariable}&&${authGateVariable},${between}${pluginsLabelVariable}=${desktopNavVariable}&&${pluginsEnabledVariable}&&!${authGateVariable}${delimiter}`;
+}
+
+function patchPluginsSidebar26513(
+  _match: string,
+  prefix: string,
+  _authMethodVariable: string,
+  experimentVariable: string,
+  experimentCall: string,
+  authGateVariable: string,
+  authGateCall: string,
+  disabledPluginsVariable: string,
+  desktopNavVariable: string,
+  navCapabilityVariable: string,
+  navCapabilityCall: string,
+  pluginsLabelVariable: string,
+  delimiter: string,
+): string {
+  return `${prefix}${experimentVariable}=${experimentCall},${authGateVariable}=${authGateCall},${disabledPluginsVariable}=!1,${navCapabilityVariable}=${navCapabilityCall},${pluginsLabelVariable}=${desktopNavVariable}&&${navCapabilityVariable}${delimiter}`;
+}
+
+function restorePluginsSidebar26513(
+  _match: string,
+  prefix: string,
+  _authMethodVariable: string,
+  experimentVariable: string,
+  experimentCall: string,
+  authGateVariable: string,
+  authGateCall: string,
+  disabledPluginsVariable: string,
+  navCapabilityVariable: string,
+  navCapabilityCall: string,
+  pluginsLabelVariable: string,
+  desktopNavVariable: string,
+  delimiter: string,
+): string {
+  return `${prefix}${experimentVariable}=${experimentCall},${authGateVariable}=${authGateCall},${disabledPluginsVariable}=${desktopNavVariable}&&${experimentVariable}&&${authGateVariable},${navCapabilityVariable}=${navCapabilityCall},${pluginsLabelVariable}=${desktopNavVariable}&&${navCapabilityVariable}&&!${authGateVariable}${delimiter}`;
 }
 
 export const TARGET_SPECS: TargetSpec[] = [
@@ -352,8 +392,8 @@ export const TARGET_SPECS: TargetSpec[] = [
     guardedSignature: PLUGINS_SIDEBAR_GUARDED_SIGNATURE_26513,
     patchedSignature: PLUGINS_SIDEBAR_PATCHED_SIGNATURE_26513,
     legacyPatchedSignature: null,
-    applyReplacement: "$1$3=Is(`533078438`),$4=Ml($2),$5=!1,$7=$8,$9=$6&&$7$10",
-    restoreReplacement: "$1$3=Is(`533078438`),$4=Ml($2),$5=$9&&$3&&$4,$6=$7,$8=$9&&$6&&!$4$10",
+    applyReplacement: patchPluginsSidebar26513,
+    restoreReplacement: restorePluginsSidebar26513,
   },
   {
     id: "plugins-page-content-26429",
@@ -414,6 +454,16 @@ export const TARGET_SPECS: TargetSpec[] = [
     legacyPatchedSignature: null,
     applyReplacement: "$1[]",
     restoreReplacement: "$1[`shared-with-me`]",
+  },
+  {
+    id: "composer-plugin-mentions-26513-flagged",
+    label: "Composer plugin mentions",
+    needle: COMPOSER_PLUGIN_MENTIONS_NEEDLE,
+    guardedSignature: COMPOSER_PLUGIN_MENTIONS_GUARDED_SIGNATURE_FLAGGED,
+    patchedSignature: COMPOSER_PLUGIN_MENTIONS_PATCHED_SIGNATURE_FLAGGED,
+    legacyPatchedSignature: null,
+    applyReplacement: "$1$2?[]:[]",
+    restoreReplacement: "$1$2?[`shared-with-me`]:[]",
   },
   {
     id: "gpt55-model-list",

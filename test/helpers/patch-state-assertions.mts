@@ -210,6 +210,34 @@ export function assertApplyState26513Build2816(archivePath: string): void {
   assertNotContains(appMain, "codexfast-gpt55", "expected 26.513 build 2816 apply to leave the model list handler on the official path");
 }
 
+export function assertApplyState26513Build2867(archivePath: string): void {
+  const generalSettings = archiveFile(archivePath, "webview/assets/general-settings-DWGOfOIB.js");
+  assertContains(generalSettings, "{serviceTierSettings:r,setServiceTier:i}=fe();let o;", "expected 26.513 build 2867 apply to remove the guarded Speed settings return");
+  assertNotContains(generalSettings, "n=se(),{serviceTierSettings:r,setServiceTier:i}=fe();if(!n)return null;", "expected 26.513 build 2867 apply to expose the Settings Speed control");
+  const composer = archiveFile(archivePath, "webview/assets/composer-DXaiOlFj.js");
+  assertContains(composer, "enabled:!0", "expected 26.513 build 2867 apply to enable the Fast slash command");
+  assertContains(composer, "ve=!0?(0,Q.jsx)(qR", "expected 26.513 build 2867 apply to enable the composer Intelligence Speed menu");
+  const appMain = archiveFile(archivePath, "webview/assets/app-main-DZOIl7aU.js");
+  assertContains(appMain, "d=!1", "expected 26.513 build 2867 apply to remove the Plugins sidebar api-key gate");
+  assertContains(appMain, /p=e&&f([,;])/, "expected 26.513 build 2867 apply to expose the Plugins nav label for api-key users");
+  const skillsPage = archiveFile(archivePath, "webview/assets/skills-page-BCITaFO4.js");
+  assertContains(skillsPage, "let p=!1", "expected 26.513 build 2867 apply to render Plugins content for api-key users");
+  assertNotContains(skillsPage, "let p=f", "expected 26.513 build 2867 apply to remove the Plugins page auth gate");
+  const pluginDetailPage = archiveFile(archivePath, "webview/assets/plugin-detail-page-CL4xxcbU.js");
+  assertContains(pluginDetailPage, "if(!1)", "expected 26.513 build 2867 apply to remove the plugin detail api-key redirect");
+  assertNotContains(pluginDetailPage, "if(ue(i))", "expected 26.513 build 2867 apply to remove the guarded plugin detail redirect");
+  const pluginAvailability = archiveFile(archivePath, "webview/assets/check-plugin-availability-BLUA-GwE.js");
+  assertContains(pluginAvailability, "let j=_.length>0&&O===_.length&&D?`disabled-by-admin`:null,M", "expected 26.513 build 2867 apply to allow plugin install when connector availability is the only blocker");
+  assertNotContains(pluginAvailability, "let j=_.length>0&&O===_.length?D?`disabled-by-admin`:`connector-unavailable`:null,M", "expected 26.513 build 2867 apply to remove aggregate connector-unavailable install blocking");
+  const pluginInstallFlow = archiveFile(archivePath, "webview/assets/plugins-availability-DpWDTiPu.js");
+  assertContains(pluginInstallFlow, "g=(u?.apps.length??0)>0&&!1,_", "expected 26.513 build 2867 apply to keep plugin install modal information visible for ON_INSTALL app plugins");
+  assertNotContains(pluginInstallFlow, "g=(u?.apps.length??0)>0&&u?.summary.authPolicy===`ON_INSTALL`,_", "expected 26.513 build 2867 apply to remove the disclosure-only install modal content gate");
+  const prosemirror = archiveFile(archivePath, "webview/assets/prosemirror-PI_17HLA.js");
+  assertContains(prosemirror, "additionalMarketplaceKinds:s?[]:[]", "expected 26.513 build 2867 apply to skip remote shared-with-me plugin mentions");
+  assertNotContains(prosemirror, "additionalMarketplaceKinds:s?[`shared-with-me`]:[]", "expected 26.513 build 2867 apply to remove the remote shared-with-me plugin mention catalog");
+  assertNotContains(appMain, "codexfast-gpt55", "expected 26.513 build 2867 apply to leave the model list handler on the official path");
+}
+
 export function assertGuardedState26513Build2816(archivePath: string, context: string): void {
   assertContains(archiveFile(archivePath, "webview/assets/general-settings-Bvwhh0-i.js"), "n=se(),{serviceTierSettings:r,setServiceTier:i}=fe();if(!n)return null;", `expected ${context} to preserve the 26.513 build 2816 guarded Speed settings state`);
   const composer = archiveFile(archivePath, "webview/assets/composer-CL8HPtlL.js");
@@ -236,6 +264,32 @@ export function assertGuardedState26513Build2816(archivePath: string, context: s
   const nativePipe = archiveFile(archivePath, "webview/assets/browser-use-native-pipe-Demo.js");
   assertContains(nativePipe, "return t==null?{authorized:!1,reason:`missing-socket-file-descriptor`}:s.authorizeSocketPeer(t,a)", `expected ${context} to preserve the guarded browser-use native pipe peer auth state`);
   assertNotContains(nativePipe, "codexfast-browser-peer-auth", `expected ${context} not to contain the removed browser-use native pipe peer auth wrapper`);
+  assertNotContains(appMain, "codexfast-gpt55", `expected ${context} not to add GPT-5.5 model list injection`);
+}
+
+export function assertGuardedState26513Build2867(archivePath: string, context: string): void {
+  assertContains(archiveFile(archivePath, "webview/assets/general-settings-DWGOfOIB.js"), "n=se(),{serviceTierSettings:r,setServiceTier:i}=fe();if(!n)return null;", `expected ${context} to preserve the 26.513 build 2867 guarded Speed settings state`);
+  const composer = archiveFile(archivePath, "webview/assets/composer-DXaiOlFj.js");
+  assertContains(composer, "enabled:a", `expected ${context} to preserve the 26.513 build 2867 guarded Fast slash command state`);
+  assertContains(composer, "ve=v?(0,Q.jsx)(qR", `expected ${context} to preserve the 26.513 build 2867 guarded composer Intelligence Speed menu state`);
+  const appMain = archiveFile(archivePath, "webview/assets/app-main-DZOIl7aU.js");
+  assertContains(appMain, "d=e&&l&&u", `expected ${context} to preserve the 26.513 build 2867 guarded Plugins sidebar state`);
+  assertContains(appMain, "p=e&&f&&!u", `expected ${context} to preserve the 26.513 build 2867 guarded Plugins nav label state`);
+  const skillsPage = archiveFile(archivePath, "webview/assets/skills-page-BCITaFO4.js");
+  assertContains(skillsPage, "let p=f", `expected ${context} to preserve the 26.513 build 2867 guarded Plugins page auth gate`);
+  assertNotContains(skillsPage, "let p=!1", `expected ${context} to restore the 26.513 build 2867 Plugins page auth gate`);
+  const pluginDetailPage = archiveFile(archivePath, "webview/assets/plugin-detail-page-CL4xxcbU.js");
+  assertContains(pluginDetailPage, "if(ue(i))", `expected ${context} to preserve the 26.513 build 2867 guarded plugin detail redirect`);
+  assertNotContains(pluginDetailPage, "if(!1)", `expected ${context} to restore the 26.513 build 2867 plugin detail redirect`);
+  const pluginAvailability = archiveFile(archivePath, "webview/assets/check-plugin-availability-BLUA-GwE.js");
+  assertContains(pluginAvailability, "let j=_.length>0&&O===_.length?D?`disabled-by-admin`:`connector-unavailable`:null,M", `expected ${context} to preserve the 26.513 build 2867 aggregate connector-unavailable install block`);
+  assertNotContains(pluginAvailability, "let j=_.length>0&&O===_.length&&D?`disabled-by-admin`:null,M", `expected ${context} to restore the 26.513 build 2867 plugin install availability gate`);
+  const pluginInstallFlow = archiveFile(archivePath, "webview/assets/plugins-availability-DpWDTiPu.js");
+  assertContains(pluginInstallFlow, "g=(u?.apps.length??0)>0&&u?.summary.authPolicy===`ON_INSTALL`,_", `expected ${context} to preserve the 26.513 build 2867 disclosure-only install modal content gate`);
+  assertNotContains(pluginInstallFlow, "g=(u?.apps.length??0)>0&&!1,_", `expected ${context} to restore the 26.513 build 2867 install modal content gate`);
+  const prosemirror = archiveFile(archivePath, "webview/assets/prosemirror-PI_17HLA.js");
+  assertContains(prosemirror, "additionalMarketplaceKinds:s?[`shared-with-me`]:[]", `expected ${context} to preserve the 26.513 build 2867 remote shared-with-me plugin mention catalog`);
+  assertNotContains(prosemirror, "additionalMarketplaceKinds:s?[]:[]", `expected ${context} to restore the 26.513 build 2867 plugin mention catalog options`);
   assertNotContains(appMain, "codexfast-gpt55", `expected ${context} not to add GPT-5.5 model list injection`);
 }
 

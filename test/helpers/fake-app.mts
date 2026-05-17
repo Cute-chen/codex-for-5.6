@@ -14,7 +14,8 @@ export type AssetProfile =
   | "26429-2345"
   | "26506"
   | "26506-2620"
-  | "26513-2816";
+  | "26513-2816"
+  | "26513-2867";
 
 export function writeInfoPlist(
   appDir: string,

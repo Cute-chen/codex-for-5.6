@@ -17,6 +17,7 @@ import {
   assertApplyState26506Build2575,
   assertApplyState26506Build2620,
   assertApplyState26513Build2816,
+  assertApplyState26513Build2867,
   assertGuardedState,
   assertGuardedState26417,
   assertGuardedState26422,
@@ -27,6 +28,7 @@ import {
   assertGuardedState26506Build2575,
   assertGuardedState26506Build2620,
   assertGuardedState26513Build2816,
+  assertGuardedState26513Build2867,
 } from "./helpers/patch-state-assertions.mts";
 import { assertCodesignCallContains as assertCodesignCallContainsHelper, assertCodesignCalls as assertCodesignCallsHelper, assertLaunchctlCallContains as assertLaunchctlCallContainsHelper, assertNoCodesignCalls as assertNoCodesignCallsHelper, assertNoLaunchCalls as assertNoLaunchCallsHelper, assertNoNpmCalls as assertNoNpmCallsHelper, assertNoTccutilCalls as assertNoTccutilCallsHelper, assertNpmCallContains as assertNpmCallContainsHelper, readOutput, resetCodesignCalls as resetCodesignCallsHelper, resetNpmCalls as resetNpmCallsHelper, resetTccutilCalls as resetTccutilCallsHelper, runScript as runScriptHelper, setupStubs as setupStubsHelper } from "./helpers/script-harness.mts";
 import { applyRuntimePatchesToBody } from "../src/patch-engine.mts";
@@ -709,6 +711,31 @@ function main(): void {
       assertNotContains(output, "Target file:", "expected 26.513 build 2816 status to omit internal target paths", output);
       assertNotContains(output, "Backup file:", "expected 26.513 build 2816 status to omit internal backup paths", output);
       assertNotContains(output, "GPT-5.5 model", "expected 26.513 build 2816 status to omit unpatched GPT-5.5 compatibility targets", output);
+    },
+  });
+
+  runApplyRestoreCase({
+    name: "supported-26513-2867",
+    appDir: join(tmpDir, "Supported26513Build2867.app"),
+    assetsRoot: join(tmpDir, "supported-26513-2867-assets"),
+    appVersion: "26.513.31313",
+    appBuild: "2867",
+    assetProfile: "26513-2867",
+    applyAssert: assertApplyState26513Build2867,
+    restoreAssert: assertGuardedState26513Build2867,
+    restoreContext: "26.513 build 2867 restore",
+    postApplyAssert: (output) => assertNotContains(output, "patched: GPT-5.5", "expected 26.513 build 2867 apply to skip GPT-5.5 patch targets", output),
+    statusAssert: (output) => {
+      assertContains(output, "Status: Speed setting enabled", "expected 26.513 build 2867 status to report the Settings Speed target after apply", output);
+      assertContains(output, "Status: Fast slash command enabled", "expected 26.513 build 2867 status to report the Fast slash command after apply", output);
+      assertContains(output, "Status: Composer Intelligence Speed menu enabled", "expected 26.513 build 2867 status to report the Intelligence Speed target after apply", output);
+      assertContains(output, "Status: Plugins access enabled", "expected 26.513 build 2867 status to report Plugins after apply", output);
+      assertContains(output, "Status: Plugins page content enabled", "expected 26.513 build 2867 status to report Plugins page content after apply", output);
+      assertContains(output, "Status: Plugin detail access enabled", "expected 26.513 build 2867 status to report Plugin detail access after apply", output);
+      assertContains(output, "Status: Plugin install availability enabled", "expected 26.513 build 2867 status to report Plugin install availability after apply", output);
+      assertContains(output, "Status: Plugin install modal content enabled", "expected 26.513 build 2867 status to report Plugin install modal content after apply", output);
+      assertContains(output, "Status: Composer plugin mentions enabled", "expected 26.513 build 2867 status to report Composer plugin mentions after apply", output);
+      assertNotContains(output, "GPT-5.5 model", "expected 26.513 build 2867 status to omit unpatched GPT-5.5 compatibility targets", output);
     },
   });
 
