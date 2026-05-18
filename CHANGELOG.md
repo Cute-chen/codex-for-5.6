@@ -6,6 +6,8 @@ This project follows a simple release-oriented changelog format.
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-05-18
+
 ### Fixed
 
 - Fixed runtime launch so quitting the `codexfast launch` terminal process no longer sends terminal process-group signals to the launched Codex app.
@@ -22,7 +24,7 @@ This project follows a simple release-oriented changelog format.
 ### Documentation
 
 - Removed the `recommended` label from the public runtime launch menu and README examples.
-- Updated maintenance guidance for the split patch-target modules, TypeScript regression runner, and supported-version drift check.
+- Updated maintenance guidance for the runtime-only launcher, generated CLI boundary, TypeScript regression runner, and supported-version drift check.
 
 ## [0.17.0] - 2026-05-17
 
