@@ -472,7 +472,7 @@ function main(): void {
       statusAssert: (output) => {
         assertNotContains(output, "Status: GPT-5.5 model query selector disabled", "expected 26.422 status to report the GPT-5.5 model query selector as enabled after apply", output);
         assertContains(output, "Status: GPT-5.5 model query selector enabled", "expected 26.422 status to include the GPT-5.5 model query selector target", output);
-    },
+      },
     },
 
     {
@@ -504,7 +504,7 @@ function main(): void {
         assertContains(output, "Status: Composer Intelligence Speed menu enabled", "expected 26.422 build 2176 status to report the Intelligence Speed target after apply", output);
         assertContains(output, "Status: Plugins access enabled", "expected 26.422 build 2176 status to report Plugins after apply", output);
         assertNotContains(output, "GPT-5.5 model", "expected 26.422 build 2176 status to omit unpatched GPT-5.5 compatibility targets", output);
-    },
+      },
     },
 
     {
@@ -522,7 +522,7 @@ function main(): void {
         assertContains(output, "Status: Composer Intelligence Speed menu enabled", "expected 26.422 build 2180 status to report the Intelligence Speed target after apply", output);
         assertContains(output, "Status: Plugins access enabled", "expected 26.422 build 2180 status to report Plugins after apply", output);
         assertNotContains(output, "GPT-5.5 model", "expected 26.422 build 2180 status to omit unpatched GPT-5.5 compatibility targets", output);
-    },
+      },
     },
 
     {
@@ -540,7 +540,7 @@ function main(): void {
         assertContains(output, "Status: Composer Intelligence Speed menu enabled", "expected 26.422 build 2210 status to report the Intelligence Speed target after apply", output);
         assertContains(output, "Status: Plugins access enabled", "expected 26.422 build 2210 status to report Plugins after apply", output);
         assertNotContains(output, "GPT-5.5 model", "expected 26.422 build 2210 status to omit unpatched GPT-5.5 compatibility targets", output);
-    },
+      },
     },
 
     {
@@ -562,7 +562,7 @@ function main(): void {
         assertContains(output, "Status: Plugin install availability enabled", "expected 26.429 build 2312 status to report Plugin install availability after apply", output);
         assertContains(output, "Status: Plugin install modal content enabled", "expected 26.429 build 2312 status to report Plugin install modal content after apply", output);
         assertNotContains(output, "GPT-5.5 model", "expected 26.429 build 2312 status to omit unpatched GPT-5.5 compatibility targets", output);
-    },
+      },
     },
 
     {
@@ -584,7 +584,7 @@ function main(): void {
         assertContains(output, "Status: Plugin install availability enabled", "expected 26.429 build 2345 status to report Plugin install availability after apply", output);
         assertContains(output, "Status: Plugin install modal content enabled", "expected 26.429 build 2345 status to report Plugin install modal content after apply", output);
         assertNotContains(output, "GPT-5.5 model", "expected 26.429 build 2345 status to omit unpatched GPT-5.5 compatibility targets", output);
-    },
+      },
     },
 
     {
@@ -606,7 +606,7 @@ function main(): void {
         assertContains(output, "Status: Plugin install availability enabled", "expected 26.429 build 2429 status to report Plugin install availability after apply", output);
         assertContains(output, "Status: Plugin install modal content enabled", "expected 26.429 build 2429 status to report Plugin install modal content after apply", output);
         assertNotContains(output, "GPT-5.5 model", "expected 26.429 build 2429 status to omit unpatched GPT-5.5 compatibility targets", output);
-    },
+      },
     },
 
     {
@@ -630,7 +630,7 @@ function main(): void {
         assertContains(output, "Status: Plugin install availability enabled", "expected 26.506 build 2575 status to report Plugin install availability after apply", output);
         assertContains(output, "Status: Plugin install modal content enabled", "expected 26.506 build 2575 status to report Plugin install modal content after apply", output);
         assertNotContains(output, "GPT-5.5 model", "expected 26.506 build 2575 status to omit unpatched GPT-5.5 compatibility targets", output);
-    },
+      },
     },
 
     {
@@ -656,7 +656,7 @@ function main(): void {
         assertNotContains(output, "Target file:", "expected 26.506 build 2620 status to omit internal target paths", output);
         assertNotContains(output, "Backup file:", "expected 26.506 build 2620 status to omit internal backup paths", output);
         assertNotContains(output, "GPT-5.5 model", "expected 26.506 build 2620 status to omit unpatched GPT-5.5 compatibility targets", output);
-    },
+      },
     },
 
     {
@@ -684,7 +684,7 @@ function main(): void {
         assertNotContains(output, "Target file:", "expected 26.513 build 2816 status to omit internal target paths", output);
         assertNotContains(output, "Backup file:", "expected 26.513 build 2816 status to omit internal backup paths", output);
         assertNotContains(output, "GPT-5.5 model", "expected 26.513 build 2816 status to omit unpatched GPT-5.5 compatibility targets", output);
-    },
+      },
     },
 
     {
@@ -709,7 +709,7 @@ function main(): void {
         assertContains(output, "Status: Plugin install modal content enabled", "expected 26.513 build 2867 status to report Plugin install modal content after apply", output);
         assertContains(output, "Status: Composer plugin mentions enabled", "expected 26.513 build 2867 status to report Composer plugin mentions after apply", output);
         assertNotContains(output, "GPT-5.5 model", "expected 26.513 build 2867 status to omit unpatched GPT-5.5 compatibility targets", output);
-    },
+      },
     },
   ];
 
