@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import * as http from "node:http";
 import * as https from "node:https";
 import * as net from "node:net";
@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { calculateAsarHeaderHash, removeStaleArchiveTempFiles, replaceArchiveAtomically, snapshotArchive, type ArchiveSnapshot } from "./cli-asar-transaction.mts";
 import { CdpConnection, cdpCommandWithTimeout, runCdpFrameSelfTest, waitForRuntimePatchConnection } from "./cli-cdp.mts";
 import { createCodexfastContext, emptyTempWorkspace } from "./cli-context.mts";

@@ -18,6 +18,12 @@ function inlineLocalModuleSource(source: string): string {
   return source.replace(/^export /gm, "");
 }
 
+function inlinePatcherTargetModuleSource(source: string): string {
+  return inlineLocalModuleSource(source)
+    .replace(/^import [^;]+;\r?\n/gm, "")
+    .replace(/^\{[^}]+};\r?\n/gm, "");
+}
+
 function inlineCliModuleSource(source: string): string {
   return inlineLocalModuleSource(source).replace(/^import [^;]+;\r?\n/gm, "");
 }
@@ -28,7 +34,12 @@ function insertAfterImports(source: string, insertedSource: string): string {
   return `${source.slice(0, insertIndex)}\n${insertedSource}\n${source.slice(insertIndex)}`;
 }
 
-const patcherTargetsSource = inlineLocalModuleSource(readFileSync(join(sourceDir, "patcher-targets.mts"), "utf8"));
+const patcherTargetsSource = [
+  "targets/speed.mts",
+  "targets/plugins.mts",
+  "targets/models.mts",
+  "patcher-targets.mts",
+].map((fileName) => inlinePatcherTargetModuleSource(readFileSync(join(sourceDir, fileName), "utf8"))).join("\n");
 const patchEngineSource = inlineLocalModuleSource(readFileSync(join(sourceDir, "patch-engine.mts"), "utf8"))
   .replace(/^import \{[^]*?\} from "\.\/patcher-targets\.mts";\r?\n\r?\n?/, "");
 const patcherEngineSource = readFileSync(join(sourceDir, "patcher.mts"), "utf8")
