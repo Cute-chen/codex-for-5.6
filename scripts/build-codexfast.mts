@@ -13,6 +13,7 @@ const compilerOptions = {
   module: ts.ModuleKind.CommonJS,
   target: ts.ScriptTarget.ES2022,
 };
+const cliModulePattern = String.raw`\.\/cli-(?:app-environment|asar-transaction|cdp|command-policy|context|legacy-app-mutations|legacy-patch-flow|output|runtime-launch|runtime-patcher|utils|watcher)\.mts`;
 
 function inlineLocalModuleSource(source: string): string {
   return source.replace(/^export /gm, "");
@@ -25,11 +26,10 @@ function inlinePatcherTargetModuleSource(source: string): string {
 }
 
 function inlineCliModuleSource(source: string): string {
-  return inlineLocalModuleSource(source).replace(/^import [^;]+;\r?\n/gm, "");
+  return stripCliModuleImports(inlineLocalModuleSource(source));
 }
 
 function stripCliModuleImports(source: string): string {
-  const cliModulePattern = String.raw`\.\/cli-(?:app-environment|asar-transaction|cdp|command-policy|context|legacy-app-mutations|legacy-patch-flow|output|runtime-launch|runtime-patcher|utils|watcher)\.mts`;
   return source
     .replace(
       new RegExp(

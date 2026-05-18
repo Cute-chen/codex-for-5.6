@@ -1,32 +1,5 @@
-import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
-import { createHash, randomBytes } from 'node:crypto';
-import {
-  chmodSync,
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  readdirSync,
-  renameSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from 'node:fs';
-import * as http from 'node:http';
-import * as https from 'node:https';
-import * as net from 'node:net';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { stdin as input, stdout as output } from 'node:process';
 import { createInterface } from 'node:readline/promises';
-import {
-  calculateAsarHeaderHash,
-  removeStaleArchiveTempFiles,
-  replaceArchiveAtomically,
-  snapshotArchive,
-  type ArchiveSnapshot,
-} from './cli-asar-transaction.mts';
 import {
   runCdpFrameSelfTest,
 } from './cli-cdp.mts';
@@ -43,7 +16,6 @@ import { createCodexfastContext } from './cli-context.mts';
 import {
   printActionHeaderBlock,
   printExitBlock,
-  printExitCode,
 } from './cli-output.mts';
 import {
   runLegacyEmbeddedTool,
@@ -63,9 +35,7 @@ import {
   type WatcherFlowOptions,
 } from './cli-watcher.mts';
 import {
-  asError,
   printLine,
-  resolveCommand,
   run,
 } from './cli-utils.mts';
 
@@ -274,7 +244,6 @@ async function main(): Promise<number> {
       cleanupStaleArchiveTempFiles:
         createLegacyAppMutations(legacyAppMutationOptions())
           .cleanupStaleArchiveTempFiles,
-      supportedAppVersionKeys,
       supportedAppVersions: SUPPORTED_APP_VERSIONS,
     })
   ) {

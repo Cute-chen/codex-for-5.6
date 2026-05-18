@@ -67,30 +67,6 @@ function runLegacyTool(appDir: string, action: string, outputFile: string, extra
   runScriptCommand(appDir, [`__selftest-legacy-${action}`], outputFile, extraEnv);
 }
 
-function runScriptWithCodesignFailure(appDir: string, input: string, outputFile: string): void {
-  runScript(appDir, input, outputFile, { CODEXFAST_TEST_CODESIGN_FAIL: "1" });
-}
-
-function runScriptWithCodesignVerifyFailure(appDir: string, input: string, outputFile: string): void {
-  runScript(appDir, input, outputFile, { CODEXFAST_TEST_CODESIGN_VERIFY_FAIL: "1" });
-}
-
-function runScriptWithAsarPackFailure(appDir: string, input: string, outputFile: string): void {
-  runScript(appDir, input, outputFile, { CODEXFAST_TEST_ASAR_PACK_FAIL: "1" });
-}
-
-function runScriptWithAsarExtractFailure(appDir: string, input: string, outputFile: string): void {
-  runScript(appDir, input, outputFile, { CODEXFAST_TEST_ASAR_EXTRACT_FAIL: "1", CODEXFAST_TEST_ALLOW_NONZERO: "1" });
-}
-
-function runScriptWithStartupAsarPackFailure(appDir: string, input: string, outputFile: string): void {
-  runScript(appDir, input, outputFile, { CODEXFAST_TEST_ASAR_PACK_FAIL: "1", CODEXFAST_TEST_ALLOW_NONZERO: "1" });
-}
-
-function runScriptAllowFailure(appDir: string, input: string, outputFile: string): void {
-  runScript(appDir, input, outputFile, { CODEXFAST_TEST_ALLOW_NONZERO: "1" });
-}
-
 function assertCodesignCalls(expectedMin: number, outputFile: string): void {
   assertCodesignCallsHelper(expectedMin, markerFile, outputFile);
 }

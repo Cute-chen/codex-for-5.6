@@ -7,7 +7,6 @@ export type CheckRequirementsOptions = {
   context: CodexfastContext;
   cleanupStaleArchiveTempFiles: () => void;
   supportedAppVersions: Record<string, string>;
-  supportedAppVersionKeys: string;
 };
 
 function readBundlePlistValueForContext(
@@ -52,7 +51,6 @@ export function checkRequirements(
     cleanupStaleArchiveTempFiles,
     command,
     context,
-    supportedAppVersionKeys,
     supportedAppVersions,
   } = options;
 

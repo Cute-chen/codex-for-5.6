@@ -52,16 +52,11 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-const node_child_process_1 = require("node:child_process");
-const node_crypto_1 = require("node:crypto");
-const node_fs_1 = require("node:fs");
-const http = __importStar(require("node:http"));
-const https = __importStar(require("node:https"));
-const net = __importStar(require("node:net"));
-const node_os_1 = require("node:os");
-const node_path_1 = require("node:path");
 const node_process_1 = require("node:process");
 const promises_1 = require("node:readline/promises");
+const node_crypto_1 = require("node:crypto");
+const node_fs_1 = require("node:fs");
+const node_path_1 = require("node:path");
 function calculateAsarHeaderHash(archivePath) {
     try {
         const archive = (0, node_fs_1.readFileSync)(archivePath);
@@ -136,7 +131,7 @@ function loadAppCompatibilityMetadataForContext(context, supportedAppVersions) {
         : "unsupported";
 }
 function checkRequirements(options) {
-    const { cleanupStaleArchiveTempFiles, command, context, supportedAppVersionKeys, supportedAppVersions, } = options;
+    const { cleanupStaleArchiveTempFiles, command, context, supportedAppVersions, } = options;
     if (!(0, node_fs_1.existsSync)(context.paths.resources)) {
         printLine(`Codex resources directory not found: ${context.paths.resources}`);
         printLine(`Make sure Codex.app is installed at ${context.paths.bundle}.`);
@@ -175,6 +170,10 @@ function checkRequirements(options) {
     }
     return true;
 }
+const node_crypto_2 = require("node:crypto");
+const http = __importStar(require("node:http"));
+const https = __importStar(require("node:https"));
+const net = __importStar(require("node:net"));
 const runtimePatchConnectTimeoutMs = 12_000;
 const runtimePatchHttpTimeoutMs = 3_000;
 function encodeWebSocketTextFrame(payload) {
@@ -182,7 +181,7 @@ function encodeWebSocketTextFrame(payload) {
     if (body.length > Number.MAX_SAFE_INTEGER) {
         throw new Error("CDP frame payload is too large.");
     }
-    const mask = (0, node_crypto_1.randomBytes)(4);
+    const mask = (0, node_crypto_2.randomBytes)(4);
     const header = [0x81];
     if (body.length < 126) {
         header.push(0x80 | body.length);
@@ -410,7 +409,7 @@ class CdpConnection {
                 return;
             }
             const port = Number(url.port || "80");
-            const key = (0, node_crypto_1.randomBytes)(16).toString("base64");
+            const key = (0, node_crypto_2.randomBytes)(16).toString("base64");
             const expectedAccept = (0, node_crypto_1.createHash)("sha1")
                 .update(`${key}258EAFA5-E914-47DA-95CA-C5AB0DC85B11`)
                 .digest("base64");
@@ -707,6 +706,8 @@ function createCodexfastContext(appBundle = process.env.CODEXFAST_APP_BUNDLE) {
         toolchain: emptyToolchain(),
     };
 }
+const node_fs_2 = require("node:fs");
+const node_os_1 = require("node:os");
 function createLegacyAppMutations(options) {
     const { asarPackage, context, sparklePublicEdKeyBridges, staleArchiveTempFileMs, } = options;
     function readBundlePlistValue(key, fallback = 'unknown') {
@@ -729,7 +730,7 @@ function createLegacyAppMutations(options) {
     function createTempWorkspace() {
         cleanupTempWorkspace();
         try {
-            context.temp.root = (0, node_fs_1.mkdtempSync)((0, node_path_1.join)((0, node_os_1.tmpdir)(), 'codexfast.'));
+            context.temp.root = (0, node_fs_2.mkdtempSync)((0, node_path_1.join)((0, node_os_1.tmpdir)(), 'codexfast.'));
             context.temp.appDir = (0, node_path_1.join)(context.temp.root, 'app');
             context.temp.assetsDir = (0, node_path_1.join)(context.temp.appDir, 'webview', 'assets');
             context.temp.asar = (0, node_path_1.join)(context.temp.root, 'app.asar');
@@ -815,7 +816,7 @@ function createLegacyAppMutations(options) {
         }
         try {
             if (!(0, node_fs_1.existsSync)(context.paths.sparklePublicEdKeyBackup)) {
-                (0, node_fs_1.writeFileSync)(context.paths.sparklePublicEdKeyBackup, currentKey, 'utf8');
+                (0, node_fs_2.writeFileSync)(context.paths.sparklePublicEdKeyBackup, currentKey, 'utf8');
             }
         }
         catch {
@@ -914,7 +915,7 @@ function createLegacyAppMutations(options) {
             return true;
         }
         try {
-            (0, node_fs_1.writeFileSync)(context.paths.asarBackup, (0, node_fs_1.readFileSync)(context.paths.asar));
+            (0, node_fs_2.writeFileSync)(context.paths.asarBackup, (0, node_fs_1.readFileSync)(context.paths.asar));
             printLine(`Created archive backup: ${context.paths.asarBackup}`);
             return true;
         }
@@ -949,7 +950,7 @@ function createLegacyAppMutations(options) {
         return true;
     }
     function replaceAppAsarFrom(sourceArchive, failureMessage) {
-        const tempFileName = `.codexfast.${process.pid}.${(0, node_crypto_1.randomBytes)(6).toString('hex')}.app.asar.tmp`;
+        const tempFileName = `.codexfast.${process.pid}.${(0, node_crypto_2.randomBytes)(6).toString('hex')}.app.asar.tmp`;
         if (replaceArchiveAtomically(sourceArchive, context.paths.asar, context.paths.resources, tempFileName)) {
             return true;
         }
@@ -1243,6 +1244,7 @@ function printExitBlock(exitCode) {
     printLine("");
     return printExitCode(exitCode);
 }
+const node_child_process_1 = require("node:child_process");
 const runtimePatchSessionTimeoutMs = 12_000;
 const runtimePatchSettleMs = 750;
 const runtimePatchInitialLoadSettleMs = 1_000;
@@ -1274,7 +1276,7 @@ function checkCodexRunning() {
     };
 }
 function randomDebugPort() {
-    return 40_000 + ((0, node_crypto_1.randomBytes)(2).readUInt16BE(0) % 20_000);
+    return 40_000 + ((0, node_crypto_2.randomBytes)(2).readUInt16BE(0) % 20_000);
 }
 function codexExecutablePath(context) {
     return (0, node_path_1.join)(context.paths.bundle, "Contents", "MacOS", "Codex");
@@ -1810,6 +1812,7 @@ function runRuntimePatchBodySourceSelfTest(patcherSource) {
     printLine("Runtime patch body self-test passed");
     return 0;
 }
+const node_child_process_2 = require("node:child_process");
 function printLine(message = "") {
     console.log(message);
 }
@@ -1819,7 +1822,7 @@ function debugRuntime(message) {
     }
 }
 function resolveCommand(name) {
-    const result = (0, node_child_process_1.spawnSync)("sh", ["-c", 'command -v -- "$1"', "sh", name], { encoding: "utf8" });
+    const result = (0, node_child_process_2.spawnSync)("sh", ["-c", 'command -v -- "$1"', "sh", name], { encoding: "utf8" });
     if (result.status !== 0) {
         return null;
     }
@@ -1829,7 +1832,7 @@ function resolvePlistBuddy() {
     return (0, node_fs_1.existsSync)("/usr/libexec/PlistBuddy") ? "/usr/libexec/PlistBuddy" : null;
 }
 function run(command, args, options = {}) {
-    const result = (0, node_child_process_1.spawnSync)(command, args, {
+    const result = (0, node_child_process_2.spawnSync)(command, args, {
         input: options.input,
         encoding: "utf8",
         env: options.env ?? process.env,
@@ -1856,6 +1859,7 @@ function escapeXml(value) {
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&apos;");
 }
+const node_fs_3 = require("node:fs");
 function userHomeDir() {
     return process.env.HOME || process.env.USERPROFILE || "";
 }
@@ -1952,9 +1956,9 @@ process.exit(result.status ?? 1);
             return false;
         }
         try {
-            (0, node_fs_1.mkdirSync)(codexfastSupportDir(), { recursive: true });
-            (0, node_fs_1.writeFileSync)(watcherCliPath(), watcherRunnerSource(), "utf8");
-            (0, node_fs_1.chmodSync)(watcherCliPath(), 0o755);
+            (0, node_fs_3.mkdirSync)(codexfastSupportDir(), { recursive: true });
+            (0, node_fs_2.writeFileSync)(watcherCliPath(), watcherRunnerSource(), "utf8");
+            (0, node_fs_3.chmodSync)(watcherCliPath(), 0o755);
             return true;
         }
         catch {
@@ -2011,8 +2015,8 @@ ${environmentXml}
             return printExitBlock(1).exitCode;
         }
         try {
-            (0, node_fs_1.mkdirSync)(launchAgentsDir(), { recursive: true });
-            (0, node_fs_1.writeFileSync)(watcherPlistPath(), watcherPlist());
+            (0, node_fs_3.mkdirSync)(launchAgentsDir(), { recursive: true });
+            (0, node_fs_2.writeFileSync)(watcherPlistPath(), watcherPlist());
         }
         catch {
             printLine("Failed to write the launchd watcher plist.");
@@ -2221,7 +2225,6 @@ async function main() {
         context,
         cleanupStaleArchiveTempFiles: createLegacyAppMutations(legacyAppMutationOptions())
             .cleanupStaleArchiveTempFiles,
-        supportedAppVersionKeys,
         supportedAppVersions: SUPPORTED_APP_VERSIONS,
     })) {
         createLegacyAppMutations(legacyAppMutationOptions()).cleanupTempWorkspace();
