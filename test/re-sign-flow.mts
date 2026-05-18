@@ -182,6 +182,8 @@ function assertGeneratedCliRuntimeRequirements(): void {
   assertContains(generatedCli, "runtimePatchReconnectMaxAttempts = 3", "expected generated CLI to bound runtime launch reconnect attempts");
   assertContains(generatedCli, '"Page.getFrameTree"', "expected generated CLI to heartbeat the CDP runtime patch session");
   assertContains(generatedCli, "Runtime patch session lost after", "expected generated CLI to report exhausted runtime patch reconnects clearly");
+  assertContains(generatedCli, "detached: true", "expected runtime launch to isolate Codex from the launch terminal process group");
+  assertContains(generatedCli, "child.unref();", "expected runtime launch to let Codex survive when the launcher exits");
   assertNotContains(generatedCli, "tccutil", "expected generated CLI not to reset macOS ScreenCapture permissions");
   assertNotContains(generatedCli, "ScreenCapture", "expected generated CLI not to contain ScreenCapture reset logic");
   assertNotContains(generatedCli, "codexfast-browser-peer-auth", "expected generated CLI not to contain browser-use native pipe peer-auth compatibility patch");

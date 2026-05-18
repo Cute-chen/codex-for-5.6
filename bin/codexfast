@@ -1195,11 +1195,12 @@ function launchCodexProcess(debugPort) {
         `--remote-debugging-port=${debugPort}`,
         "--remote-debugging-address=127.0.0.1",
     ], {
-        detached: false,
+        detached: true,
         stdio: "ignore",
         env: process.env,
     });
     child.on("error", () => undefined);
+    child.unref();
     return child;
 }
 function terminateRuntimeLaunchProcess(child) {

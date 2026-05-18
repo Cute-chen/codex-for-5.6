@@ -6,6 +6,10 @@ This project follows a simple release-oriented changelog format.
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed runtime launch so quitting the `codexfast launch` terminal process no longer sends terminal process-group signals to the launched Codex app.
+
 ## [0.17.0] - 2026-05-17
 
 ### Added
