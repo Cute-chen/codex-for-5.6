@@ -34,10 +34,12 @@ Do not use this skill for release-only work. Use `codexfast-release-flow` for th
 ## Workflow
 
 1. Inspect the current repo state.
-   - Read `AGENTS.md`, `src/cli.mts`, `src/patcher-targets.mts`, the relevant `src/targets/*` module, `test/re-sign-flow.mts`, `test/re-sign-flow.sh`, and the relevant README sections.
+   - Read `AGENTS.md`, `src/cli.mts`, the relevant `src/cli-*.mts` module, `src/patcher-targets.mts`, the relevant `src/targets/*` module, `test/re-sign-flow.mts`, `test/re-sign-flow.sh`, and the relevant README sections.
    - Use `src/targets/speed.mts`, `src/targets/plugins.mts`, and `src/targets/models.mts` for feature-specific target definitions; keep shared target builders in `src/targets/builders.mts`.
    - Treat `src/patcher.mts` as legacy file-patch orchestration, not the primary home for new target metadata.
-   - For runtime launch behavior, inspect `src/cli-cdp.mts`, `src/cli-asar-transaction.mts`, and `src/cli.mts` together because the generated CLI inlines those modules.
+   - For runtime launch behavior, inspect `src/cli-runtime-launch.mts`, `src/cli-runtime-patcher.mts`, `src/cli-cdp.mts`, and `src/cli.mts` together because the generated CLI inlines those modules.
+   - For legacy apply/restore behavior, inspect `src/cli-legacy-patch-flow.mts`, `src/cli-legacy-app-mutations.mts`, `src/cli-asar-transaction.mts`, and `src/patcher.mts` together.
+   - For app environment or watcher behavior, inspect `src/cli-app-environment.mts`, `src/cli-watcher.mts`, and `src/cli.mts` together.
    - If the change is bundle-specific, identify the exact gated text key, target file shape, runtime URL shape, and internal restore path first.
    - Do not trust `status`/matcher output as proof that a feature target is gone. For every expected feature path, search the extracted bundle by stable needles such as `settings.agent.speed.label`, `composer.speedSlashCommand.title`, `composer.intelligenceDropdown.speed.title`, `sidebarElectron.pluginsDisabledTooltip`, `skills.pluginsAuthBlockedToast.title`, `pluginDeepLinkAuthBlocked`, `plugins.install.connectorUnavailable`, `plugins.installModal.about`, and nearby `serviceTierSettings` / auth-method gates.
    - Distinguish "target absent" from "target present but regex stale". A target is absent only after broad non-locale JS search shows the user-facing needle and adjacent gate are no longer present anywhere in `webview/assets`.
@@ -47,7 +49,7 @@ Do not use this skill for release-only work. Use `codexfast-release-flow` for th
    - Keep patch logic narrow.
    - Prefer adding a new target spec over refactoring unrelated logic.
    - For compatibility gating, update the whitelist and surface the detected version/build clearly in output.
-   - If changing the generated entrypoint, edit the source pieces and regenerate `bin/codexfast`.
+   - If changing the generated entrypoint, edit the source pieces, update `scripts/build-codexfast.mts` when a new `src/cli-*.mts` module must be inlined, and regenerate `bin/codexfast`.
 
 3. Update regression coverage in the same change.
    - Extend `test/re-sign-flow.mts` for every new target, runtime path, restore path, or compatibility guard. Keep `test/re-sign-flow.sh` as the compatibility entrypoint.

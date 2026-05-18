@@ -10,6 +10,10 @@ This project follows a simple release-oriented changelog format.
 
 - Fixed runtime launch so quitting the `codexfast launch` terminal process no longer sends terminal process-group signals to the launched Codex app.
 
+### Changed
+
+- Split the generated CLI source into focused runtime launch, legacy patch flow, watcher, app-environment, and app-mutation modules while preserving the single-file `bin/codexfast` output.
+
 ### Documentation
 
 - Updated maintenance guidance for the split patch-target modules, TypeScript regression runner, and supported-version drift check.
