@@ -43,7 +43,7 @@ Repository guidance for `codexfast`.
 
 - Use Conventional Commit format for every commit message: `<type>: <summary>`.
 - Prefer these types in this repo:
-  - `fix:` for bug fixes, patch-signature corrections, restore behavior fixes, and compatibility-scope corrections.
+  - `fix:` for bug fixes, patch-signature corrections, runtime-launch fixes, and compatibility-scope corrections.
   - `feat:` for newly supported Codex builds or newly exposed feature paths.
   - `docs:` for documentation-only changes.
   - `test:` for test-only changes.

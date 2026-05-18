@@ -23,8 +23,8 @@ Use these checks when validating `launch` behavior. Do not mark a build as real-
 
 ## Core App Checks
 
-- `Codex.app` launches successfully after patching
-- `Codex.app` still launches after a restart
+- `Codex.app` launches successfully through `codexfast launch`
+- `Codex.app` still launches normally after a full quit and regular restart
 - Opening Settings does not crash or show an error
 
 ## Fast Feature Set
@@ -56,7 +56,7 @@ Use these checks when validating `launch` behavior. Do not mark a build as real-
 ## Recovery Checks
 
 - Launch removes any legacy auto-repair watcher files if they were present before launch
-- The app remains in packed `app.asar` layout after launch
+- The installed app bundle is unchanged after launch
 
 ## Notes
 
