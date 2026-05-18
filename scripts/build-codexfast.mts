@@ -29,7 +29,7 @@ function inlineCliModuleSource(source: string): string {
 }
 
 function stripCliModuleImports(source: string): string {
-  const cliModulePattern = String.raw`\.\/cli-(?:asar-transaction|cdp|command-policy|context|legacy-patch-flow|output|runtime-launch|runtime-patcher|utils|watcher)\.mts`;
+  const cliModulePattern = String.raw`\.\/cli-(?:app-environment|asar-transaction|cdp|command-policy|context|legacy-patch-flow|output|runtime-launch|runtime-patcher|utils|watcher)\.mts`;
   return source
     .replace(
       new RegExp(
@@ -72,6 +72,7 @@ const patcherSource = ts.transpileModule(`"use strict";\n\n${patcherTargetsSourc
 const packageVersion = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8")).version as string;
 const cliModuleSource = [
   "cli-asar-transaction.mts",
+  "cli-app-environment.mts",
   "cli-cdp.mts",
   "cli-command-policy.mts",
   "cli-context.mts",

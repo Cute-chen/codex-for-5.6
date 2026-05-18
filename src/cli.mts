@@ -38,6 +38,7 @@ import {
   isVersionCommand,
   resolveLegacySelftestAction,
 } from './cli-command-policy.mts';
+import { checkRequirements } from './cli-app-environment.mts';
 import { createCodexfastContext } from './cli-context.mts';
 import {
   printActionHeaderBlock,
@@ -61,7 +62,6 @@ import {
   asError,
   printLine,
   resolveCommand,
-  resolvePlistBuddy,
   run,
 } from './cli-utils.mts';
 
@@ -94,19 +94,6 @@ function readBundlePlistValue(key: string, fallback = 'unknown'): string {
     context.paths.infoPlist,
   ]);
   return result.status === 0 ? result.stdout.trim() : fallback;
-}
-
-function loadAppCompatibilityMetadata(): void {
-  context.metadata.version = readBundlePlistValue('CFBundleShortVersionString');
-  context.metadata.build = readBundlePlistValue('CFBundleVersion');
-  context.metadata.versionKey = `${context.metadata.version}+${context.metadata.build}`;
-  context.metadata.supported = Object.prototype.hasOwnProperty.call(
-    SUPPORTED_APP_VERSIONS,
-    context.metadata.versionKey,
-  );
-  context.metadata.compatibility = context.metadata.supported
-    ? `supported (${SUPPORTED_APP_VERSIONS[context.metadata.versionKey]})`
-    : 'unsupported';
 }
 
 function cleanupTempWorkspace(): void {
@@ -593,60 +580,6 @@ function resignAppBundle(reason: string): boolean {
   return true;
 }
 
-function checkRequirements(options: { command?: string } = {}): boolean {
-  if (!existsSync(context.paths.resources)) {
-    printLine(
-      `Codex resources directory not found: ${context.paths.resources}`,
-    );
-    printLine(`Make sure Codex.app is installed at ${context.paths.bundle}.`);
-    return false;
-  }
-
-  context.toolchain.node = process.execPath;
-  context.toolchain.plistBuddy = resolvePlistBuddy() ?? '';
-
-  if (!context.toolchain.plistBuddy) {
-    printLine('PlistBuddy not found.');
-    printLine(
-      'This macOS environment cannot update ElectronAsarIntegrity in Info.plist.',
-    );
-    return false;
-  }
-
-  cleanupStaleArchiveTempFiles();
-
-  loadAppCompatibilityMetadata();
-
-  if (
-    (options.command === 'repair' && !context.metadata.supported) ||
-    options.command === 'launch'
-  ) {
-    return true;
-  }
-
-  context.toolchain.npm = resolveCommand('npm') ?? '';
-  context.toolchain.npx = resolveCommand('npx') ?? '';
-  context.toolchain.codesign = resolveCommand('codesign') ?? '';
-
-  if (!context.toolchain.npm) {
-    printLine('npm not found.');
-    printLine('Make sure npm is available in your shell.');
-    return false;
-  }
-  if (options.command === 'install-watcher' && !context.toolchain.npx) {
-    printLine('npx not found.');
-    printLine('Make sure npx is available in your shell.');
-    return false;
-  }
-  if (!context.toolchain.codesign) {
-    printLine('codesign not found.');
-    printLine('This macOS environment cannot perform local re-signing.');
-    return false;
-  }
-
-  return true;
-}
-
 function printActionHeader(action: string): void {
   printActionHeaderBlock(action, {
     resources: context.paths.resources,
@@ -818,7 +751,15 @@ async function main(): Promise<number> {
   }
 
   const effectiveCommand = legacySelftestAction || command;
-  if (!checkRequirements({ command: effectiveCommand })) {
+  if (
+    !checkRequirements({
+      command: effectiveCommand,
+      context,
+      cleanupStaleArchiveTempFiles,
+      supportedAppVersionKeys,
+      supportedAppVersions: SUPPORTED_APP_VERSIONS,
+    })
+  ) {
     cleanupTempWorkspace();
     return 1;
   }
