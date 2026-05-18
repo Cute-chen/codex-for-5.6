@@ -668,6 +668,498 @@ function printExitBlock(exitCode) {
     printLine("");
     return printExitCode(exitCode);
 }
+const runtimePatchSessionTimeoutMs = 12_000;
+const runtimePatchSettleMs = 750;
+const runtimePatchInitialLoadSettleMs = 1_000;
+const runtimePatchHeartbeatIntervalMs = 5_000;
+const runtimePatchHeartbeatTimeoutMs = 2_000;
+const runtimePatchReconnectMaxAttempts = 3;
+const runtimePatchReconnectDelayMs = 1_000;
+function checkCodexRunning() {
+    if (process.env.CODEXFAST_TEST_CODEX_RUNNING === "1") {
+        return { ok: true, running: true };
+    }
+    const pgrepBin = resolveCommand("pgrep");
+    if (!pgrepBin) {
+        return {
+            ok: false,
+            message: "Cannot determine whether Codex.app is running because pgrep was not found.",
+        };
+    }
+    const result = run(pgrepBin, ["-x", "Codex"]);
+    if (result.status === 0) {
+        return { ok: true, running: true };
+    }
+    if (result.status === 1) {
+        return { ok: true, running: false };
+    }
+    return {
+        ok: false,
+        message: `Cannot determine whether Codex.app is running because pgrep failed with exit code ${result.status}.`,
+    };
+}
+function randomDebugPort() {
+    return 40_000 + ((0, node_crypto_1.randomBytes)(2).readUInt16BE(0) % 20_000);
+}
+function codexExecutablePath(context) {
+    return (0, node_path_1.join)(context.paths.bundle, "Contents", "MacOS", "Codex");
+}
+function launchCodexProcess(context, debugPort) {
+    const executable = codexExecutablePath(context);
+    if (!(0, node_fs_1.existsSync)(executable)) {
+        throw new Error(`Codex executable not found: ${executable}`);
+    }
+    const child = (0, node_child_process_1.spawn)(executable, [
+        `--remote-debugging-port=${debugPort}`,
+        "--remote-debugging-address=127.0.0.1",
+    ], {
+        detached: true,
+        stdio: "ignore",
+        env: process.env,
+    });
+    child.on("error", () => undefined);
+    child.unref();
+    return child;
+}
+function terminateRuntimeLaunchProcess(child) {
+    if (!child.pid || child.killed) {
+        return;
+    }
+    try {
+        process.kill(-child.pid, "SIGTERM");
+    }
+    catch {
+        child.kill();
+    }
+}
+function responseHeadersForFulfill(headers) {
+    const forwarded = [];
+    for (const header of headers ?? []) {
+        const name = header.name.toLowerCase();
+        if (name === "content-type" || name === "charset") {
+            forwarded.push({ name: header.name, value: header.value });
+        }
+    }
+    if (!forwarded.some((header) => header.name.toLowerCase() === "content-type")) {
+        forwarded.push({
+            name: "content-type",
+            value: "application/javascript; charset=utf-8",
+        });
+    }
+    return forwarded;
+}
+async function continueFetchRequest(cdp, requestId) {
+    await cdp.send("Fetch.continueRequest", { requestId });
+}
+async function handleFetchRequestPaused(cdp, patcherSource, params) {
+    const resourceUrl = params.request.url;
+    if (!isRuntimeJavaScriptResource(resourceUrl)) {
+        await continueFetchRequest(cdp, params.requestId);
+        return [];
+    }
+    debugRuntime(`paused ${resourceUrl}`);
+    let bodyResult;
+    try {
+        bodyResult = await cdp.send("Fetch.getResponseBody", {
+            requestId: params.requestId,
+        });
+    }
+    catch {
+        debugRuntime(`getResponseBody failed ${resourceUrl}`);
+        await continueFetchRequest(cdp, params.requestId);
+        return [];
+    }
+    if (typeof bodyResult.body !== "string") {
+        debugRuntime(`missing body ${resourceUrl}`);
+        await continueFetchRequest(cdp, params.requestId);
+        return [];
+    }
+    const body = bodyResult.base64Encoded
+        ? Buffer.from(bodyResult.body, "base64").toString("utf8")
+        : bodyResult.body;
+    let patchResult;
+    try {
+        patchResult = applyRuntimePatchesToResponseBodyWithSource(patcherSource, resourceUrl, body);
+    }
+    catch (error) {
+        debugRuntime(`patch failed ${resourceUrl}: ${asError(error).message}`);
+        await continueFetchRequest(cdp, params.requestId);
+        return [];
+    }
+    const labels = [
+        ...patchResult.patchedLabels,
+        ...patchResult.alreadyPatchedLabels,
+    ];
+    if (patchResult.matchedLabels.length > 0) {
+        debugRuntime(`matched ${resourceUrl}: ${patchResult.matchedLabels.join(", ")}`);
+    }
+    if (patchResult.content === body) {
+        await continueFetchRequest(cdp, params.requestId);
+        return labels;
+    }
+    await cdp.send("Fetch.fulfillRequest", {
+        requestId: params.requestId,
+        responseCode: params.responseStatusCode ?? 200,
+        responseHeaders: responseHeadersForFulfill(params.responseHeaders),
+        body: Buffer.from(patchResult.content, "utf8").toString("base64"),
+    });
+    return labels;
+}
+function runtimePatchSessionLostMessage(error) {
+    return `Runtime patch session lost after ${runtimePatchReconnectMaxAttempts} reconnect attempts: ${error.message}`;
+}
+function printRuntimePatchSessionLost(error) {
+    printLine(error.message);
+    printLine("Codex.app will keep running without further runtime patching.");
+    printLine("Lazy-loaded features that were not patched before this point may stay unavailable until you fully quit Codex and relaunch with codexfast.");
+}
+function printRuntimeLaunchReady(patchedLabels) {
+    printLine("Patched targets:");
+    for (const label of patchedLabels) {
+        printLine(`  ${label}`);
+    }
+    printLine("");
+    printLine("Runtime launch completed.");
+    printLine("Keep this codexfast launch process running while you use Codex.");
+    printLine("Quit Codex to end the runtime patch session.");
+}
+function waitForRuntimeInitialPageLoad(cdp) {
+    return new Promise((resolve) => {
+        let settled = false;
+        let timeout = null;
+        const resolveOnce = () => {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            if (timeout) {
+                clearTimeout(timeout);
+            }
+            resolve();
+        };
+        timeout = setTimeout(resolveOnce, runtimePatchInitialLoadSettleMs);
+        cdp.on("Page.loadEventFired", resolveOnce);
+        cdp.on("Page.frameStoppedLoading", resolveOnce);
+    });
+}
+async function enableRuntimePatchInterception(cdp, options) {
+    await cdp.send("Page.enable");
+    debugRuntime("Page.enable ok");
+    if (options.waitForInitialLoad) {
+        await waitForRuntimeInitialPageLoad(cdp);
+        debugRuntime("initial page load settled");
+    }
+    await cdp.send("Fetch.enable", {
+        patterns: [
+            {
+                urlPattern: "app://*/assets/*.js",
+                requestStage: "Response",
+            },
+            {
+                urlPattern: "app://*/webview/assets/*.js",
+                requestStage: "Response",
+            },
+        ],
+    });
+    debugRuntime("Fetch.enable ok");
+    if (options.reload) {
+        await cdp.send("Page.reload", { ignoreCache: true });
+        debugRuntime("Page.reload ok");
+    }
+}
+async function startRuntimePatchSession(debugPort, patcherSource) {
+    let cdp = await waitForRuntimePatchConnection(debugPort);
+    const observedLabels = new Set();
+    const pausedRequestHandlers = new Set();
+    let settleTimer = null;
+    let failSession = () => undefined;
+    let keepSessionOpen = false;
+    let initialCompleted = false;
+    let closed = false;
+    let reconnecting = false;
+    let connectionGeneration = 0;
+    let heartbeatTimer = null;
+    let resolveLost = () => undefined;
+    let markInitialObserved = () => undefined;
+    const lost = new Promise((resolve) => {
+        resolveLost = resolve;
+    });
+    const stopHeartbeat = () => {
+        if (heartbeatTimer) {
+            clearInterval(heartbeatTimer);
+            heartbeatTimer = null;
+        }
+    };
+    const markSessionLost = (error) => {
+        if (closed) {
+            return;
+        }
+        closed = true;
+        stopHeartbeat();
+        cdp.close();
+        resolveLost(error);
+    };
+    const reconnectRuntimePatchSession = async (reason) => {
+        if (closed || reconnecting) {
+            return;
+        }
+        reconnecting = true;
+        cdp.close();
+        let lastError = reason;
+        for (let attempt = 1; attempt <= runtimePatchReconnectMaxAttempts; attempt += 1) {
+            if (closed) {
+                reconnecting = false;
+                return;
+            }
+            if (attempt > 1) {
+                await sleep(runtimePatchReconnectDelayMs);
+            }
+            printLine(`Runtime patch session reconnecting (${attempt}/${runtimePatchReconnectMaxAttempts})...`);
+            try {
+                const nextCdp = await waitForRuntimePatchConnection(debugPort);
+                connectionGeneration += 1;
+                cdp = nextCdp;
+                registerRuntimeFetchHandler(connectionGeneration);
+                await enableRuntimePatchInterception(cdp, {
+                    waitForInitialLoad: false,
+                    reload: true,
+                });
+                printLine("Runtime patch session reconnected.");
+                reconnecting = false;
+                return;
+            }
+            catch (error) {
+                lastError = asError(error);
+                cdp.close();
+            }
+        }
+        reconnecting = false;
+        markSessionLost(new Error(runtimePatchSessionLostMessage(lastError)));
+    };
+    const handleConnectionFailure = (generation, error) => {
+        if (closed || generation !== connectionGeneration) {
+            return;
+        }
+        if (!initialCompleted) {
+            failSession(error);
+            return;
+        }
+        void reconnectRuntimePatchSession(error);
+    };
+    const registerRuntimeFetchHandler = (generation) => {
+        const attachedCdp = cdp;
+        attachedCdp.onEventError((error) => {
+            handleConnectionFailure(generation, error);
+        });
+        attachedCdp.on("Fetch.requestPaused", (params) => {
+            const task = handleFetchRequestPaused(attachedCdp, patcherSource, params).then((labels) => {
+                let sawNewLabel = false;
+                for (const label of labels) {
+                    if (!observedLabels.has(label)) {
+                        sawNewLabel = true;
+                    }
+                    observedLabels.add(label);
+                }
+                if (!initialCompleted && labels.length > 0) {
+                    markInitialObserved();
+                }
+                if (initialCompleted && sawNewLabel) {
+                    debugRuntime(`patched labels now active: ${[...observedLabels].join(", ")}`);
+                }
+            });
+            pausedRequestHandlers.add(task);
+            task.then(() => pausedRequestHandlers.delete(task), () => pausedRequestHandlers.delete(task));
+            return task;
+        });
+    };
+    const startHeartbeat = () => {
+        heartbeatTimer = setInterval(() => {
+            if (closed || reconnecting) {
+                return;
+            }
+            if (cdp.isClosed()) {
+                void reconnectRuntimePatchSession(new Error("CDP WebSocket connection closed."));
+                return;
+            }
+            void cdpCommandWithTimeout(cdp.send("Page.getFrameTree"), runtimePatchHeartbeatTimeoutMs, "Timed out waiting for CDP heartbeat.").catch((error) => {
+                void reconnectRuntimePatchSession(asError(error));
+            });
+        }, runtimePatchHeartbeatIntervalMs);
+    };
+    try {
+        const initialSession = new Promise((resolve, reject) => {
+            let timeout = null;
+            let completed = false;
+            let finishStarted = false;
+            const clearSessionTimers = () => {
+                if (settleTimer) {
+                    clearTimeout(settleTimer);
+                    settleTimer = null;
+                }
+                if (timeout) {
+                    clearTimeout(timeout);
+                    timeout = null;
+                }
+            };
+            const fail = (error) => {
+                if (completed) {
+                    return;
+                }
+                completed = true;
+                clearSessionTimers();
+                reject(error);
+            };
+            failSession = fail;
+            const finish = () => {
+                if (completed || finishStarted) {
+                    return;
+                }
+                finishStarted = true;
+                clearSessionTimers();
+                void (async () => {
+                    try {
+                        while (pausedRequestHandlers.size > 0) {
+                            await Promise.all([...pausedRequestHandlers]);
+                        }
+                    }
+                    catch (error) {
+                        fail(asError(error));
+                        return;
+                    }
+                    if (completed) {
+                        return;
+                    }
+                    if (observedLabels.size === 0) {
+                        fail(new Error("Runtime patch interception completed without required targets."));
+                        return;
+                    }
+                    completed = true;
+                    initialCompleted = true;
+                    resolve([...observedLabels]);
+                })();
+            };
+            const markObserved = () => {
+                if (completed || settleTimer) {
+                    return;
+                }
+                settleTimer = setTimeout(finish, runtimePatchSettleMs);
+            };
+            markInitialObserved = markObserved;
+            timeout = setTimeout(finish, runtimePatchSessionTimeoutMs);
+        });
+        void initialSession.catch(() => undefined);
+        registerRuntimeFetchHandler(connectionGeneration);
+        try {
+            await enableRuntimePatchInterception(cdp, {
+                waitForInitialLoad: true,
+                reload: true,
+            });
+        }
+        catch (error) {
+            failSession(asError(error));
+        }
+        const patchedLabels = await initialSession;
+        keepSessionOpen = true;
+        startHeartbeat();
+        return {
+            patchedLabels,
+            close: () => {
+                closed = true;
+                stopHeartbeat();
+                cdp.close();
+            },
+            lost,
+        };
+    }
+    finally {
+        if (!keepSessionOpen) {
+            closed = true;
+            stopHeartbeat();
+            cdp.close();
+        }
+    }
+}
+function waitForRuntimePatchSession(debugPort, patcherSource) {
+    return startRuntimePatchSession(debugPort, patcherSource);
+}
+function waitForRuntimeLaunchProcessExit(child) {
+    return new Promise((resolve) => {
+        let settled = false;
+        const finish = (exitCode) => {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            resolve(exitCode);
+        };
+        child.once("error", () => finish(1));
+        child.once("exit", (code) => finish(code ?? 0));
+    });
+}
+async function runRuntimeLaunch(options) {
+    const { context, patcherSource, printActionHeader, removeLegacyWatcherFiles, supportedAppVersionKeys, } = options;
+    printActionHeader("launch");
+    if (!context.metadata.supported) {
+        printLine("Runtime launch is blocked for this Codex.app version.");
+        printLine(`Supported versions: ${supportedAppVersionKeys}`);
+        return printExitBlock(1).exitCode;
+    }
+    if (!removeLegacyWatcherFiles({ quietLaunchctl: true, reportRemoved: true })) {
+        printLine("Failed to remove legacy auto-repair watcher.");
+        return printExitBlock(1).exitCode;
+    }
+    const runningCheck = checkCodexRunning();
+    if (!runningCheck.ok) {
+        printLine(runningCheck.message);
+        return printExitBlock(1).exitCode;
+    }
+    if (runningCheck.running) {
+        printLine("Codex.app is already running. Quit Codex.app before using runtime launch.");
+        return printExitBlock(1).exitCode;
+    }
+    if (process.env.CODEXFAST_TEST_RUNTIME_LAUNCH_SUCCESS === "1") {
+        printRuntimeLaunchReady(["Speed setting"]);
+        if (process.env.CODEXFAST_TEST_RUNTIME_LAUNCH_SESSION_LOST === "1") {
+            printRuntimePatchSessionLost(new Error(runtimePatchSessionLostMessage(new Error("simulated CDP heartbeat failure"))));
+            return printExitBlock(0).exitCode;
+        }
+        return printExitCode(0).exitCode;
+    }
+    let child = null;
+    let session = null;
+    try {
+        const debugPort = randomDebugPort();
+        child = launchCodexProcess(context, debugPort);
+        const childExit = waitForRuntimeLaunchProcessExit(child);
+        session = await waitForRuntimePatchSession(debugPort, patcherSource);
+        printRuntimeLaunchReady(session.patchedLabels);
+        const outcome = await Promise.race([
+            childExit.then((exitCode) => ({ type: "child-exit", exitCode })),
+            session.lost.then((error) => ({ type: "session-lost", error })),
+        ]);
+        if (outcome.type === "session-lost") {
+            session.close();
+            session = null;
+            printRuntimePatchSessionLost(outcome.error);
+            return printExitBlock(0).exitCode;
+        }
+        session.close();
+        session = null;
+        printExitCode(outcome.exitCode);
+        return outcome.exitCode;
+    }
+    catch (error) {
+        if (session) {
+            session.close();
+            session = null;
+        }
+        if (child && !child.killed) {
+            terminateRuntimeLaunchProcess(child);
+        }
+        printLine(`Runtime launch failed: ${asError(error).message}`);
+    }
+    return printExitBlock(1).exitCode;
+}
 let runtimePatchBodyFunction = null;
 function applyRuntimePatchesToResponseBodyWithSource(patcherSource, resourcePath, body) {
     if (!runtimePatchBodyFunction) {
@@ -803,13 +1295,6 @@ const launchAgentFileName = `${launchAgentLabel}.plist`;
 const SPARKLE_PUBLIC_ED_KEY_BRIDGES = {
     '26.506.31421+2620': 'mNfr1v9t63BfgDtlw4C8lRvSY6uMggIXABDOCi3tS6k=',
 };
-const runtimePatchSessionTimeoutMs = 12_000;
-const runtimePatchSettleMs = 750;
-const runtimePatchInitialLoadSettleMs = 1_000;
-const runtimePatchHeartbeatIntervalMs = 5_000;
-const runtimePatchHeartbeatTimeoutMs = 2_000;
-const runtimePatchReconnectMaxAttempts = 3;
-const runtimePatchReconnectDelayMs = 1_000;
 function userHomeDir() {
     return process.env.HOME || process.env.USERPROFILE || '';
 }
@@ -1439,496 +1924,6 @@ function runEmbeddedTool(action) {
     printExitBlock(exitCode);
     return exitCode;
 }
-function checkCodexRunning() {
-    if (process.env.CODEXFAST_TEST_CODEX_RUNNING === '1') {
-        return { ok: true, running: true };
-    }
-    const pgrepBin = resolveCommand('pgrep');
-    if (!pgrepBin) {
-        return {
-            ok: false,
-            message: 'Cannot determine whether Codex.app is running because pgrep was not found.',
-        };
-    }
-    const result = run(pgrepBin, ['-x', 'Codex']);
-    if (result.status === 0) {
-        return { ok: true, running: true };
-    }
-    if (result.status === 1) {
-        return { ok: true, running: false };
-    }
-    return {
-        ok: false,
-        message: `Cannot determine whether Codex.app is running because pgrep failed with exit code ${result.status}.`,
-    };
-}
-function randomDebugPort() {
-    return 40_000 + ((0, node_crypto_1.randomBytes)(2).readUInt16BE(0) % 20_000);
-}
-function codexExecutablePath() {
-    return (0, node_path_1.join)(context.paths.bundle, 'Contents', 'MacOS', 'Codex');
-}
-function launchCodexProcess(debugPort) {
-    const executable = codexExecutablePath();
-    if (!(0, node_fs_1.existsSync)(executable)) {
-        throw new Error(`Codex executable not found: ${executable}`);
-    }
-    const child = (0, node_child_process_1.spawn)(executable, [
-        `--remote-debugging-port=${debugPort}`,
-        '--remote-debugging-address=127.0.0.1',
-    ], {
-        detached: true,
-        stdio: 'ignore',
-        env: process.env,
-    });
-    child.on('error', () => undefined);
-    child.unref();
-    return child;
-}
-function terminateRuntimeLaunchProcess(child) {
-    if (!child.pid || child.killed) {
-        return;
-    }
-    try {
-        process.kill(-child.pid, 'SIGTERM');
-    }
-    catch {
-        child.kill();
-    }
-}
-function applyRuntimePatchesToResponseBody(resourcePath, body) {
-    return applyRuntimePatchesToResponseBodyWithSource(__PATCHER_SOURCE__, resourcePath, body);
-}
-function runRuntimePatchBodySelfTest() {
-    return runRuntimePatchBodySourceSelfTest(__PATCHER_SOURCE__);
-}
-function responseHeadersForFulfill(headers) {
-    const forwarded = [];
-    for (const header of headers ?? []) {
-        const name = header.name.toLowerCase();
-        if (name === 'content-type' || name === 'charset') {
-            forwarded.push({ name: header.name, value: header.value });
-        }
-    }
-    if (!forwarded.some((header) => header.name.toLowerCase() === 'content-type')) {
-        forwarded.push({
-            name: 'content-type',
-            value: 'application/javascript; charset=utf-8',
-        });
-    }
-    return forwarded;
-}
-async function continueFetchRequest(cdp, requestId) {
-    await cdp.send('Fetch.continueRequest', { requestId });
-}
-async function handleFetchRequestPaused(cdp, params) {
-    const resourceUrl = params.request.url;
-    if (!isRuntimeJavaScriptResource(resourceUrl)) {
-        await continueFetchRequest(cdp, params.requestId);
-        return [];
-    }
-    debugRuntime(`paused ${resourceUrl}`);
-    let bodyResult;
-    try {
-        bodyResult = await cdp.send('Fetch.getResponseBody', {
-            requestId: params.requestId,
-        });
-    }
-    catch {
-        debugRuntime(`getResponseBody failed ${resourceUrl}`);
-        await continueFetchRequest(cdp, params.requestId);
-        return [];
-    }
-    if (typeof bodyResult.body !== 'string') {
-        debugRuntime(`missing body ${resourceUrl}`);
-        await continueFetchRequest(cdp, params.requestId);
-        return [];
-    }
-    const body = bodyResult.base64Encoded
-        ? Buffer.from(bodyResult.body, 'base64').toString('utf8')
-        : bodyResult.body;
-    let patchResult;
-    try {
-        patchResult = applyRuntimePatchesToResponseBody(resourceUrl, body);
-    }
-    catch (error) {
-        debugRuntime(`patch failed ${resourceUrl}: ${asError(error).message}`);
-        await continueFetchRequest(cdp, params.requestId);
-        return [];
-    }
-    const labels = [
-        ...patchResult.patchedLabels,
-        ...patchResult.alreadyPatchedLabels,
-    ];
-    if (patchResult.matchedLabels.length > 0) {
-        debugRuntime(`matched ${resourceUrl}: ${patchResult.matchedLabels.join(', ')}`);
-    }
-    if (patchResult.content === body) {
-        await continueFetchRequest(cdp, params.requestId);
-        return labels;
-    }
-    await cdp.send('Fetch.fulfillRequest', {
-        requestId: params.requestId,
-        responseCode: params.responseStatusCode ?? 200,
-        responseHeaders: responseHeadersForFulfill(params.responseHeaders),
-        body: Buffer.from(patchResult.content, 'utf8').toString('base64'),
-    });
-    return labels;
-}
-function runtimePatchSessionLostMessage(error) {
-    return `Runtime patch session lost after ${runtimePatchReconnectMaxAttempts} reconnect attempts: ${error.message}`;
-}
-function printRuntimePatchSessionLost(error) {
-    printLine(error.message);
-    printLine('Codex.app will keep running without further runtime patching.');
-    printLine('Lazy-loaded features that were not patched before this point may stay unavailable until you fully quit Codex and relaunch with codexfast.');
-}
-function printRuntimeLaunchReady(patchedLabels) {
-    printLine('Patched targets:');
-    for (const label of patchedLabels) {
-        printLine(`  ${label}`);
-    }
-    printLine('');
-    printLine('Runtime launch completed.');
-    printLine('Keep this codexfast launch process running while you use Codex.');
-    printLine('Quit Codex to end the runtime patch session.');
-}
-function waitForRuntimeInitialPageLoad(cdp) {
-    return new Promise((resolve) => {
-        let settled = false;
-        let timeout = null;
-        const resolveOnce = () => {
-            if (settled) {
-                return;
-            }
-            settled = true;
-            if (timeout) {
-                clearTimeout(timeout);
-            }
-            resolve();
-        };
-        timeout = setTimeout(resolveOnce, runtimePatchInitialLoadSettleMs);
-        cdp.on('Page.loadEventFired', resolveOnce);
-        cdp.on('Page.frameStoppedLoading', resolveOnce);
-    });
-}
-async function enableRuntimePatchInterception(cdp, options) {
-    await cdp.send('Page.enable');
-    debugRuntime('Page.enable ok');
-    if (options.waitForInitialLoad) {
-        await waitForRuntimeInitialPageLoad(cdp);
-        debugRuntime('initial page load settled');
-    }
-    await cdp.send('Fetch.enable', {
-        patterns: [
-            {
-                urlPattern: 'app://*/assets/*.js',
-                requestStage: 'Response',
-            },
-            {
-                urlPattern: 'app://*/webview/assets/*.js',
-                requestStage: 'Response',
-            },
-        ],
-    });
-    debugRuntime('Fetch.enable ok');
-    if (options.reload) {
-        await cdp.send('Page.reload', { ignoreCache: true });
-        debugRuntime('Page.reload ok');
-    }
-}
-async function startRuntimePatchSession(debugPort) {
-    let cdp = await waitForRuntimePatchConnection(debugPort);
-    const observedLabels = new Set();
-    const pausedRequestHandlers = new Set();
-    let settleTimer = null;
-    let failSession = () => undefined;
-    let keepSessionOpen = false;
-    let initialCompleted = false;
-    let closed = false;
-    let reconnecting = false;
-    let connectionGeneration = 0;
-    let heartbeatTimer = null;
-    let resolveLost = () => undefined;
-    let markInitialObserved = () => undefined;
-    const lost = new Promise((resolve) => {
-        resolveLost = resolve;
-    });
-    const stopHeartbeat = () => {
-        if (heartbeatTimer) {
-            clearInterval(heartbeatTimer);
-            heartbeatTimer = null;
-        }
-    };
-    const markSessionLost = (error) => {
-        if (closed) {
-            return;
-        }
-        closed = true;
-        stopHeartbeat();
-        cdp.close();
-        resolveLost(error);
-    };
-    const reconnectRuntimePatchSession = async (reason) => {
-        if (closed || reconnecting) {
-            return;
-        }
-        reconnecting = true;
-        cdp.close();
-        let lastError = reason;
-        for (let attempt = 1; attempt <= runtimePatchReconnectMaxAttempts; attempt += 1) {
-            if (closed) {
-                reconnecting = false;
-                return;
-            }
-            if (attempt > 1) {
-                await sleep(runtimePatchReconnectDelayMs);
-            }
-            printLine(`Runtime patch session reconnecting (${attempt}/${runtimePatchReconnectMaxAttempts})...`);
-            try {
-                const nextCdp = await waitForRuntimePatchConnection(debugPort);
-                connectionGeneration += 1;
-                cdp = nextCdp;
-                registerRuntimeFetchHandler(connectionGeneration);
-                await enableRuntimePatchInterception(cdp, {
-                    waitForInitialLoad: false,
-                    reload: true,
-                });
-                printLine('Runtime patch session reconnected.');
-                reconnecting = false;
-                return;
-            }
-            catch (error) {
-                lastError = asError(error);
-                cdp.close();
-            }
-        }
-        reconnecting = false;
-        markSessionLost(new Error(runtimePatchSessionLostMessage(lastError)));
-    };
-    const handleConnectionFailure = (generation, error) => {
-        if (closed || generation !== connectionGeneration) {
-            return;
-        }
-        if (!initialCompleted) {
-            failSession(error);
-            return;
-        }
-        void reconnectRuntimePatchSession(error);
-    };
-    const registerRuntimeFetchHandler = (generation) => {
-        const attachedCdp = cdp;
-        attachedCdp.onEventError((error) => {
-            handleConnectionFailure(generation, error);
-        });
-        attachedCdp.on('Fetch.requestPaused', (params) => {
-            const task = handleFetchRequestPaused(attachedCdp, params).then((labels) => {
-                let sawNewLabel = false;
-                for (const label of labels) {
-                    if (!observedLabels.has(label)) {
-                        sawNewLabel = true;
-                    }
-                    observedLabels.add(label);
-                }
-                if (!initialCompleted && labels.length > 0) {
-                    markInitialObserved();
-                }
-                if (initialCompleted && sawNewLabel) {
-                    debugRuntime(`patched labels now active: ${[...observedLabels].join(', ')}`);
-                }
-            });
-            pausedRequestHandlers.add(task);
-            task.then(() => pausedRequestHandlers.delete(task), () => pausedRequestHandlers.delete(task));
-            return task;
-        });
-    };
-    const startHeartbeat = () => {
-        heartbeatTimer = setInterval(() => {
-            if (closed || reconnecting) {
-                return;
-            }
-            if (cdp.isClosed()) {
-                void reconnectRuntimePatchSession(new Error('CDP WebSocket connection closed.'));
-                return;
-            }
-            void cdpCommandWithTimeout(cdp.send("Page.getFrameTree"), runtimePatchHeartbeatTimeoutMs, 'Timed out waiting for CDP heartbeat.').catch((error) => {
-                void reconnectRuntimePatchSession(asError(error));
-            });
-        }, runtimePatchHeartbeatIntervalMs);
-    };
-    try {
-        const initialSession = new Promise((resolve, reject) => {
-            let timeout = null;
-            let completed = false;
-            let finishStarted = false;
-            const clearSessionTimers = () => {
-                if (settleTimer) {
-                    clearTimeout(settleTimer);
-                    settleTimer = null;
-                }
-                if (timeout) {
-                    clearTimeout(timeout);
-                    timeout = null;
-                }
-            };
-            const fail = (error) => {
-                if (completed) {
-                    return;
-                }
-                completed = true;
-                clearSessionTimers();
-                reject(error);
-            };
-            failSession = fail;
-            const finish = () => {
-                if (completed || finishStarted) {
-                    return;
-                }
-                finishStarted = true;
-                clearSessionTimers();
-                void (async () => {
-                    try {
-                        while (pausedRequestHandlers.size > 0) {
-                            await Promise.all([...pausedRequestHandlers]);
-                        }
-                    }
-                    catch (error) {
-                        fail(asError(error));
-                        return;
-                    }
-                    if (completed) {
-                        return;
-                    }
-                    if (observedLabels.size === 0) {
-                        fail(new Error('Runtime patch interception completed without required targets.'));
-                        return;
-                    }
-                    completed = true;
-                    initialCompleted = true;
-                    resolve([...observedLabels]);
-                })();
-            };
-            const markObserved = () => {
-                if (completed || settleTimer) {
-                    return;
-                }
-                settleTimer = setTimeout(finish, runtimePatchSettleMs);
-            };
-            markInitialObserved = markObserved;
-            timeout = setTimeout(finish, runtimePatchSessionTimeoutMs);
-        });
-        void initialSession.catch(() => undefined);
-        registerRuntimeFetchHandler(connectionGeneration);
-        try {
-            await enableRuntimePatchInterception(cdp, {
-                waitForInitialLoad: true,
-                reload: true,
-            });
-        }
-        catch (error) {
-            failSession(asError(error));
-        }
-        const patchedLabels = await initialSession;
-        keepSessionOpen = true;
-        startHeartbeat();
-        return {
-            patchedLabels,
-            close: () => {
-                closed = true;
-                stopHeartbeat();
-                cdp.close();
-            },
-            lost,
-        };
-    }
-    finally {
-        if (!keepSessionOpen) {
-            closed = true;
-            stopHeartbeat();
-            cdp.close();
-        }
-    }
-}
-async function waitForRuntimePatchSession(debugPort) {
-    return startRuntimePatchSession(debugPort);
-}
-function waitForRuntimeLaunchProcessExit(child) {
-    return new Promise((resolve) => {
-        let settled = false;
-        const finish = (exitCode) => {
-            if (settled) {
-                return;
-            }
-            settled = true;
-            resolve(exitCode);
-        };
-        child.once('error', () => finish(1));
-        child.once('exit', (code) => finish(code ?? 0));
-    });
-}
-async function runRuntimeLaunch() {
-    printActionHeader('launch');
-    if (!context.metadata.supported) {
-        printLine('Runtime launch is blocked for this Codex.app version.');
-        printLine(`Supported versions: ${supportedAppVersionKeys}`);
-        return printExitBlock(1).exitCode;
-    }
-    if (!removeLegacyWatcherFiles({ quietLaunchctl: true, reportRemoved: true })) {
-        printLine('Failed to remove legacy auto-repair watcher.');
-        return printExitBlock(1).exitCode;
-    }
-    const runningCheck = checkCodexRunning();
-    if (!runningCheck.ok) {
-        printLine(runningCheck.message);
-        return printExitBlock(1).exitCode;
-    }
-    if (runningCheck.running) {
-        printLine('Codex.app is already running. Quit Codex.app before using runtime launch.');
-        return printExitBlock(1).exitCode;
-    }
-    if (process.env.CODEXFAST_TEST_RUNTIME_LAUNCH_SUCCESS === '1') {
-        printRuntimeLaunchReady(['Speed setting']);
-        if (process.env.CODEXFAST_TEST_RUNTIME_LAUNCH_SESSION_LOST === '1') {
-            printRuntimePatchSessionLost(new Error(runtimePatchSessionLostMessage(new Error('simulated CDP heartbeat failure'))));
-            return printExitBlock(0).exitCode;
-        }
-        return printExitCode(0).exitCode;
-    }
-    let child = null;
-    let session = null;
-    try {
-        const debugPort = randomDebugPort();
-        child = launchCodexProcess(debugPort);
-        const childExit = waitForRuntimeLaunchProcessExit(child);
-        session = await waitForRuntimePatchSession(debugPort);
-        printRuntimeLaunchReady(session.patchedLabels);
-        const outcome = await Promise.race([
-            childExit.then((exitCode) => ({ type: 'child-exit', exitCode })),
-            session.lost.then((error) => ({ type: 'session-lost', error })),
-        ]);
-        if (outcome.type === 'session-lost') {
-            session.close();
-            session = null;
-            printRuntimePatchSessionLost(outcome.error);
-            return printExitBlock(0).exitCode;
-        }
-        session.close();
-        session = null;
-        printExitCode(outcome.exitCode);
-        return outcome.exitCode;
-    }
-    catch (error) {
-        if (session) {
-            session.close();
-            session = null;
-        }
-        if (child && !child.killed) {
-            terminateRuntimeLaunchProcess(child);
-        }
-        printLine(`Runtime launch failed: ${asError(error).message}`);
-    }
-    return printExitBlock(1).exitCode;
-}
 function watcherRunnerSource() {
     return `#!/usr/bin/env node
 const { spawnSync } = require("node:child_process");
@@ -2073,6 +2068,15 @@ function printUsage() {
 function printVersion() {
     printLine(`codexfast ${__PACKAGE_VERSION__}`);
 }
+function runRuntimeLaunchCommand() {
+    return runRuntimeLaunch({
+        context,
+        patcherSource: __PATCHER_SOURCE__,
+        supportedAppVersionKeys,
+        printActionHeader,
+        removeLegacyWatcherFiles,
+    });
+}
 async function showMenu() {
     const rl = (0, promises_1.createInterface)({ input: node_process_1.stdin, output: node_process_1.stdout });
     try {
@@ -2086,7 +2090,7 @@ async function showMenu() {
             const choice = (await rl.question('Select an option: ')).trim();
             switch (choice) {
                 case '1':
-                    await runRuntimeLaunch();
+                    await runRuntimeLaunchCommand();
                     await rl.question('Press Enter to continue...');
                     break;
                 case 'q':
@@ -2118,7 +2122,7 @@ async function main() {
     }
     if (isRuntimeSelftestCommand(command) &&
         command === '__selftest-runtime-patch-body') {
-        return runRuntimePatchBodySelfTest();
+        return runRuntimePatchBodySourceSelfTest(__PATCHER_SOURCE__);
     }
     if (legacySelftestAction === '__invalid__') {
         printUsage();
@@ -2148,7 +2152,7 @@ async function main() {
         return runEmbeddedTool(legacySelftestAction);
     }
     if (isPublicLaunchCommand(command)) {
-        return await runRuntimeLaunch();
+        return await runRuntimeLaunchCommand();
     }
     return showMenu();
 }
