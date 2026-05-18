@@ -5,8 +5,9 @@
   "scripts": {
     "build": "tsx scripts/build-codexfast.mts",
     "build:check": "tsx scripts/build-codexfast.mts --check",
+    "check:version-drift": "tsx scripts/check-supported-version-drift.mts",
     "inspect:bundle-targets": "tsx scripts/inspect-bundle-targets.mts",
-    "test": "pnpm build:check && bash test/re-sign-flow.sh",
+    "test": "pnpm build:check && pnpm check:version-drift && bash test/re-sign-flow.sh",
     "typecheck": "tsc --noEmit",
     "prepack": "pnpm build:check"
   },
