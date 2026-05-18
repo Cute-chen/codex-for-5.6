@@ -62,6 +62,51 @@ const node_path_1 = require("node:path");
 const promises_1 = require("node:readline/promises");
 const node_process_1 = require("node:process");
 const node_child_process_1 = require("node:child_process");
+function createAppPaths(appBundle = "/Applications/Codex.app") {
+    const resources = (0, node_path_1.join)(appBundle, "Contents", "Resources");
+    return {
+        bundle: appBundle,
+        resources,
+        infoPlist: (0, node_path_1.join)(appBundle, "Contents", "Info.plist"),
+        asar: (0, node_path_1.join)(resources, "app.asar"),
+        asarBackup: (0, node_path_1.join)(resources, "app.asar1"),
+        sparklePublicEdKeyBackup: (0, node_path_1.join)(resources, "SUPublicEDKey.codexfast.bak"),
+    };
+}
+function emptyAppMetadata() {
+    return {
+        version: "unknown",
+        build: "unknown",
+        versionKey: "unknown+unknown",
+        compatibility: "unsupported",
+        supported: false,
+    };
+}
+function emptyTempWorkspace() {
+    return {
+        root: "",
+        appDir: "",
+        assetsDir: "",
+        asar: "",
+    };
+}
+function emptyToolchain() {
+    return {
+        node: "",
+        npm: "",
+        npx: "",
+        codesign: "",
+        plistBuddy: "",
+    };
+}
+function createCodexfastContext(appBundle = process.env.CODEXFAST_APP_BUNDLE) {
+    return {
+        paths: createAppPaths(appBundle ?? "/Applications/Codex.app"),
+        metadata: emptyAppMetadata(),
+        temp: emptyTempWorkspace(),
+        toolchain: emptyToolchain(),
+    };
+}
 function printLine(message = "") {
     console.log(message);
 }
@@ -111,12 +156,7 @@ function escapeXml(value) {
 const __PATCHER_SOURCE__ = "\"use strict\";\nconst SPEED_LABEL_NEEDLE = \"settings.agent.speed.label\";\nconst SPEED_SLASH_COMMAND_NEEDLE = \"composer.speedSlashCommand.title\";\nconst ADD_CONTEXT_SPEED_NEEDLE = \"composer.addContext.speed.option.fast.description\";\nconst INTELLIGENCE_SPEED_NEEDLE = \"composer.intelligenceDropdown.speed.title\";\nconst PLUGINS_SIDEBAR_NEEDLE = \"sidebarElectron.pluginsDisabledTooltip\";\nconst PLUGINS_PAGE_CONTENT_NEEDLE = \"skills.pluginsAuthBlockedToast.title\";\nconst PLUGIN_DETAIL_AUTH_NEEDLE = \"pluginDeepLinkAuthBlocked\";\nconst PLUGIN_INSTALL_AVAILABILITY_NEEDLE = \"plugins.install.connectorUnavailable\";\nconst PLUGIN_INSTALL_MODAL_CONTENT_NEEDLE = \"plugins.installModal.about\";\nconst COMPOSER_PLUGIN_MENTIONS_NEEDLE = \"composer.atMentionList.pluginsLoading\";\nconst MODEL_LIST_NEEDLE = \"\\\"list-models-for-host\\\"\";\nconst MODEL_QUERY_NEEDLE = \"modelsByType\";\nconst GPT_55_OFFICIAL_MODEL_LIST_MIN_VERSION = \"26.422.30944\";\nconst GPT_55_MODEL_ENTRY = \"{id:`gpt-5.5`,model:`gpt-5.5`,upgrade:null,upgradeInfo:null,availabilityNux:null,displayName:`GPT-5.5`,description:`Frontier model for complex coding, research, and real-world work.`,hidden:!1,supportedReasoningEfforts:[{reasoningEffort:`low`,description:`Fast responses with lighter reasoning`},{reasoningEffort:`medium`,description:`Balances speed and reasoning depth for everyday tasks`},{reasoningEffort:`high`,description:`Greater reasoning depth for complex problems`},{reasoningEffort:`xhigh`,description:`Extra high reasoning depth for complex problems`}],defaultReasoningEffort:`medium`,inputModalities:[`text`],supportsPersonality:!0,additionalSpeedTiers:[`fast`],isDefault:!1}\";\nconst GUARDED_SIGNATURE = /([A-Za-z_$][\\w$]*)=((?:_e|ae|P|N|de|ie|se)\\(\\),)(\\{serviceTierSettings:[^,}]+,setServiceTier:[^}]+\\}=(?:Ce|se|be|xe|ye|Ve|de|fe)\\(\\);)if\\(!\\1\\)return null;/;\nconst PATCHED_SIGNATURE = /([A-Za-z_$][\\w$]*)=!0,(\\{serviceTierSettings:[^,}]+,setServiceTier:[^}]+\\}=(Ce|se|be|xe|ye|Ve|de|fe)\\(\\);)let /;\nconst NORMALIZED_PATCHED_SIGNATURE = /([A-Za-z_$][\\w$]*)=((?:_e|ae|P|N|de|ie|se)\\(\\),)(\\{serviceTierSettings:[^,}]+,setServiceTier:[^}]+\\}=(?:Ce|se|be|xe|ye|Ve|de|fe)\\(\\);)let /;\nconst SLASH_COMMAND_GUARDED_SIGNATURE = /(id:`speed`,title:[^,]+,description:[^,]+,requiresEmptyComposer:!1,enabled:)([A-Za-z_$][\\w$]*)(,Icon:[^,]+,onSelect:[^,]+,dependencies:[A-Za-z_$][\\w$]*})/;\nconst SLASH_COMMAND_PATCHED_SIGNATURE = /(id:`speed`,title:[^,]+,description:[^,]+,requiresEmptyComposer:!1,enabled:)!0(,Icon:[^,]+,onSelect:[^,]+,dependencies:[A-Za-z_$][\\w$]*})/;\nconst ADD_CONTEXT_SPEED_GUARDED_SIGNATURE_OLD = /([A-Za-z_$][\\w$]*)=Cr\\(\\),(\\{serviceTierSettings:[^,}]+,setServiceTier:[^}]+\\}=Ir\\([^)]+\\)[;,])/;\nconst ADD_CONTEXT_SPEED_PATCHED_SIGNATURE_OLD = /([A-Za-z_$][\\w$]*)=!0,(\\{serviceTierSettings:[^,}]+,setServiceTier:[^}]+\\}=Ir\\([^)]+\\)[;,])/;\nconst ADD_CONTEXT_SPEED_GUARDED_SIGNATURE_NEW = /([A-Za-z_$][\\w$]*)=cr\\(\\),(\\{serviceTierSettings:[^,}]+,setServiceTier:[^}]+\\}=jr\\([^)]+\\)[;,])/;\nconst ADD_CONTEXT_SPEED_PATCHED_SIGNATURE_NEW = /([A-Za-z_$][\\w$]*)=!0,(\\{serviceTierSettings:[^,}]+,setServiceTier:[^}]+\\}=jr\\([^)]+\\)[;,])/;\nconst INTELLIGENCE_SPEED_GUARDED_SIGNATURE = /(\\{serviceTierSettings:[^,}]+,setServiceTier:[^}]+\\}=(?:Jp|Zp)\\([^)]*\\),)([A-Za-z_$][\\w$]*)=_f\\(\\),/;\nconst INTELLIGENCE_SPEED_PATCHED_SIGNATURE = /(\\{serviceTierSettings:[^,}]+,setServiceTier:[^}]+\\}=(?:Jp|Zp)\\([^)]*\\),)([A-Za-z_$][\\w$]*)=!0,/;\nconst INTELLIGENCE_SPEED_GUARDED_SIGNATURE_GF = /(\\{serviceTierSettings:[^,}]+,setServiceTier:[^}]+\\}=Yp\\([^)]*\\),)([A-Za-z_$][\\w$]*)=gf\\(\\),/;\nconst INTELLIGENCE_SPEED_PATCHED_SIGNATURE_GF = /(\\{serviceTierSettings:[^,}]+,setServiceTier:[^}]+\\}=Yp\\([^)]*\\),)([A-Za-z_$][\\w$]*)=!0,/;\nconst INTELLIGENCE_SPEED_GUARDED_SIGNATURE_QS = /(let )([A-Za-z_$][\\w$]*)=(qs|va)\\(([^)]+)\\),([A-Za-z_$][\\w$]*=(?:zr|fi)\\([A-Za-z_$][\\w$]*,n\\),)/;\nconst INTELLIGENCE_SPEED_PATCHED_SIGNATURE_QS = /(let )([A-Za-z_$][\\w$]*)=!0,([A-Za-z_$][\\w$]*=(?:zr|fi)\\([A-Za-z_$][\\w$]*,n\\),)/;\nconst INTELLIGENCE_SPEED_GUARDED_SIGNATURE_QA = /(let )([A-Za-z_$][\\w$]*);([^;]{0,260}\\?\\(\\2=)([A-Za-z_$][\\w$]*)(\\?\\(0,[A-Za-z_$][\\w$]*\\.jsx\\)\\([A-Za-z_$][\\w$]*,\\{selectedServiceTier:[^}]+,isLoading:[^}]+,setServiceTier:[^}]+,onSelectComplete:[^}]+\\}\\):null,)/;\nconst INTELLIGENCE_SPEED_PATCHED_SIGNATURE_QA = /(let )([A-Za-z_$][\\w$]*);([^;]{0,260}\\?\\(\\2=)!0(\\?\\(0,[A-Za-z_$][\\w$]*\\.jsx\\)\\([A-Za-z_$][\\w$]*,\\{selectedServiceTier:[^}]+,isLoading:[^}]+,setServiceTier:[^}]+,onSelectComplete:[^}]+\\}\\):null,)/;\nconst PLUGINS_SIDEBAR_GUARDED_SIGNATURE_OLD = /(\\{authMethod:([A-Za-z_$][\\w$]*)\\}=[^,]+,[^]*?cf\\(`533078438`\\),)([A-Za-z_$][\\w$]*)=\\2===`apikey`,/;\nconst PLUGINS_SIDEBAR_PATCHED_SIGNATURE_OLD = /(\\{authMethod:([A-Za-z_$][\\w$]*)\\}=[^,]+,[^]*?cf\\(`533078438`\\),)([A-Za-z_$][\\w$]*)=!1,/;\nconst PLUGINS_SIDEBAR_GUARDED_SIGNATURE_NEW = /(\\{authMethod:([A-Za-z_$][\\w$]*)\\}=[^,]+,[^]*?)([A-Za-z_$][\\w$]*)=Fs\\(\\),([A-Za-z_$][\\w$]*)=hf\\(`533078438`\\),([A-Za-z_$][\\w$]*)=\\2===`apikey`,([A-Za-z_$][\\w$]*)=\\4&&\\5,([A-Za-z_$][\\w$]*)=\\3&&!?\\5([,;])/;\nconst PLUGINS_SIDEBAR_PATCHED_SIGNATURE_NEW = /(\\{authMethod:([A-Za-z_$][\\w$]*)\\}=[^,]+,[^]*?)([A-Za-z_$][\\w$]*)=Fs\\(\\),([A-Za-z_$][\\w$]*)=hf\\(`533078438`\\),([A-Za-z_$][\\w$]*)=\\2===`apikey`,([A-Za-z_$][\\w$]*)=!1,([A-Za-z_$][\\w$]*)=\\3([,;])/;\nconst PLUGINS_SIDEBAR_LEGACY_PATCHED_SIGNATURE_NEW = /(\\{authMethod:([A-Za-z_$][\\w$]*)\\}=[^,]+,[^]*?)([A-Za-z_$][\\w$]*)=Fs\\(\\),([A-Za-z_$][\\w$]*)=hf\\(`533078438`\\),([A-Za-z_$][\\w$]*)=\\2===`apikey`,([A-Za-z_$][\\w$]*)=!1,([A-Za-z_$][\\w$]*)=\\3&&!?\\5([,;])/;\nconst PLUGINS_SIDEBAR_GUARDED_SIGNATURE_26422 = /(\\{authMethod:([A-Za-z_$][\\w$]*)\\}=[^,]+,)([A-Za-z_$][\\w$]*)=((?:\\$f|Qf)\\(`533078438`\\)),([A-Za-z_$][\\w$]*)=\\2===`apikey`,([A-Za-z_$][\\w$]*)=\\3&&\\5,([^]*?)([A-Za-z_$][\\w$]*)=(Ha\\(\\{hostId:[^}]+\\}\\))&&!\\5([,;])/;\nconst PLUGINS_SIDEBAR_PATCHED_SIGNATURE_26422 = /(\\{authMethod:([A-Za-z_$][\\w$]*)\\}=[^,]+,)([A-Za-z_$][\\w$]*)=((?:\\$f|Qf)\\(`533078438`\\)),([A-Za-z_$][\\w$]*)=\\2===`apikey`,([A-Za-z_$][\\w$]*)=!1,([^]*?)([A-Za-z_$][\\w$]*)=(Ha\\(\\{hostId:[^}]+\\}\\))([,;])/;\nconst PLUGINS_SIDEBAR_LEGACY_PATCHED_SIGNATURE_26422 = /(\\{authMethod:([A-Za-z_$][\\w$]*)\\}=[^,]+,)([A-Za-z_$][\\w$]*)=((?:\\$f|Qf)\\(`533078438`\\)),([A-Za-z_$][\\w$]*)=\\2===`apikey`,([A-Za-z_$][\\w$]*)=!1,([^]*?)([A-Za-z_$][\\w$]*)=(Ha\\(\\{hostId:[^}]+\\}\\))&&!\\5([,;])/;\nconst PLUGINS_SIDEBAR_GUARDED_SIGNATURE_26429 = /(\\{authMethod:([A-Za-z_$][\\w$]*)\\}=[^,]+,)([A-Za-z_$][\\w$]*)=ms\\(`533078438`\\),([A-Za-z_$][\\w$]*)=ed\\(\\2\\),([A-Za-z_$][\\w$]*)=\\3&&\\4,([^]*?)([A-Za-z_$][\\w$]*)=([A-Za-z_$][\\w$]*\\(\\{hostId:[^}]+\\}\\))&&!\\4([,;])/;\nconst PLUGINS_SIDEBAR_PATCHED_SIGNATURE_26429 = /(\\{authMethod:([A-Za-z_$][\\w$]*)\\}=[^,]+,)([A-Za-z_$][\\w$]*)=ms\\(`533078438`\\),([A-Za-z_$][\\w$]*)=ed\\(\\2\\),([A-Za-z_$][\\w$]*)=!1,([^]*?)([A-Za-z_$][\\w$]*)=([A-Za-z_$][\\w$]*\\(\\{hostId:[^}]+\\}\\))([,;])/;\nconst PLUGINS_SIDEBAR_LEGACY_PATCHED_SIGNATURE_26429 = /(\\{authMethod:([A-Za-z_$][\\w$]*)\\}=[^,]+,)([A-Za-z_$][\\w$]*)=ms\\(`533078438`\\),([A-Za-z_$][\\w$]*)=ed\\(\\2\\),([A-Za-z_$][\\w$]*)=!1,([^]*?)([A-Za-z_$][\\w$]*)=([A-Za-z_$][\\w$]*\\(\\{hostId:[^}]+\\}\\))&&!\\4([,;])/;\nconst PLUGINS_SIDEBAR_GUARDED_SIGNATURE_26506 = /(\\{authMethod:([A-Za-z_$][\\w$]*)\\}=[^,]+,)([A-Za-z_$][\\w$]*)=rs\\(`533078438`\\),([A-Za-z_$][\\w$]*)=Xc\\(\\2\\),([A-Za-z_$][\\w$]*)=([A-Za-z_$][\\w$]*)&&\\3&&\\4,([^]*?)([A-Za-z_$][\\w$]*)=\\6&&([A-Za-z_$][\\w$]*)&&!\\4([,;])/;\nconst PLUGINS_SIDEBAR_PATCHED_SIGNATURE_26506 = /(\\{authMethod:([A-Za-z_$][\\w$]*)\\}=[^,]+,)([A-Za-z_$][\\w$]*)=rs\\(`533078438`\\),([A-Za-z_$][\\w$]*)=Xc\\(\\2\\),([A-Za-z_$][\\w$]*)=!1,([^]*?)([A-Za-z_$][\\w$]*)=([A-Za-z_$][\\w$]*)&&([A-Za-z_$][\\w$]*)([,;])/;\nconst PLUGINS_SIDEBAR_GUARDED_SIGNATURE_26506_QO = /(\\{authMethod:([A-Za-z_$][\\w$]*)\\}=[^,]+,)([A-Za-z_$][\\w$]*)=Qo\\(`533078438`\\),([A-Za-z_$][\\w$]*)=Xc\\(\\2\\),([A-Za-z_$][\\w$]*)=([A-Za-z_$][\\w$]*)&&\\3&&\\4,([^]*?)([A-Za-z_$][\\w$]*)=\\6&&([A-Za-z_$][\\w$]*)&&!\\4([,;])/;\nconst PLUGINS_SIDEBAR_PATCHED_SIGNATURE_26506_QO = /(\\{authMethod:([A-Za-z_$][\\w$]*)\\}=[^,]+,)([A-Za-z_$][\\w$]*)=Qo\\(`533078438`\\),([A-Za-z_$][\\w$]*)=Xc\\(\\2\\),([A-Za-z_$][\\w$]*)=!1,([^]*?)([A-Za-z_$][\\w$]*)=([A-Za-z_$][\\w$]*)&&([A-Za-z_$][\\w$]*)([,;])/;\nconst PLUGINS_SIDEBAR_GUARDED_SIGNATURE_26513 = /(\\{authMethod:([A-Za-z_$][\\w$]*)\\}=[^,]+,)([A-Za-z_$][\\w$]*)=((?:Is|ec)\\(`533078438`\\)),([A-Za-z_$][\\w$]*)=((?:Ml|Xl)\\(\\2\\)),([A-Za-z_$][\\w$]*)=([A-Za-z_$][\\w$]*)&&\\3&&\\5,([A-Za-z_$][\\w$]*)=((?:hl|Nl)\\(\\{hostId:[^}]+\\}\\)),([A-Za-z_$][\\w$]*)=\\8&&\\9&&!\\5([,;])/;\nconst PLUGINS_SIDEBAR_PATCHED_SIGNATURE_26513 = /(\\{authMethod:([A-Za-z_$][\\w$]*)\\}=[^,]+,)([A-Za-z_$][\\w$]*)=((?:Is|ec)\\(`533078438`\\)),([A-Za-z_$][\\w$]*)=((?:Ml|Xl)\\(\\2\\)),([A-Za-z_$][\\w$]*)=!1,([A-Za-z_$][\\w$]*)=((?:hl|Nl)\\(\\{hostId:[^}]+\\}\\)),([A-Za-z_$][\\w$]*)=([A-Za-z_$][\\w$]*)&&\\8([,;])/;\nconst PLUGINS_PAGE_CONTENT_GUARDED_SIGNATURE = /(let )([A-Za-z_$][\\w$]*)=([A-Za-z_$][\\w$]*),([A-Za-z_$][\\w$]*),([A-Za-z_$][\\w$]*);(if\\(e\\[\\d+\\]!==[A-Za-z_$][\\w$]*\\|\\|e\\[\\d+\\]!==\\2\\|\\|)/;\nconst PLUGINS_PAGE_CONTENT_PATCHED_SIGNATURE = /(let )([A-Za-z_$][\\w$]*)=!1,([A-Za-z_$][\\w$]*),([A-Za-z_$][\\w$]*);(if\\(e\\[\\d+\\]!==[A-Za-z_$][\\w$]*\\|\\|e\\[\\d+\\]!==\\2\\|\\|)/;\nconst PLUGIN_DETAIL_AUTH_GUARDED_SIGNATURE = /(\\{authMethod:([A-Za-z_$][\\w$]*)\\}=([A-Za-z_$][\\w$]*)\\(\\);)if\\(([A-Za-z_$][\\w$]*)\\(\\2\\)\\)\\{/;\nconst PLUGIN_DETAIL_AUTH_PATCHED_SIGNATURE = /(\\{authMethod:([A-Za-z_$][\\w$]*)\\}=([A-Za-z_$][\\w$]*)\\(\\);)if\\(!1\\)\\{/;\nconst PLUGIN_INSTALL_AVAILABILITY_GUARDED_SIGNATURE = /(let )([A-Za-z_$][\\w$]*)=([A-Za-z_$][\\w$]*)\\.length>0&&([A-Za-z_$][\\w$]*)===\\3\\.length\\?([A-Za-z_$][\\w$]*)\\?`disabled-by-admin`:`connector-unavailable`:null,([A-Za-z_$][\\w$]*);/;\nconst PLUGIN_INSTALL_AVAILABILITY_PATCHED_SIGNATURE = /(let )([A-Za-z_$][\\w$]*)=([A-Za-z_$][\\w$]*)\\.length>0&&([A-Za-z_$][\\w$]*)===\\3\\.length&&([A-Za-z_$][\\w$]*)\\?`disabled-by-admin`:null,([A-Za-z_$][\\w$]*);/;\nconst PLUGIN_INSTALL_MODAL_CONTENT_GUARDED_SIGNATURE = /(let )([A-Za-z_$][\\w$]*)=([A-Za-z_$][\\w$]*),([A-Za-z_$][\\w$]*)=\\(([A-Za-z_$][\\w$]*)\\?\\.apps\\.length\\?\\?0\\)>0&&\\5\\?\\.summary\\.authPolicy===`ON_INSTALL`,([A-Za-z_$][\\w$]*);/;\nconst PLUGIN_INSTALL_MODAL_CONTENT_PATCHED_SIGNATURE = /(let )([A-Za-z_$][\\w$]*)=([A-Za-z_$][\\w$]*),([A-Za-z_$][\\w$]*)=\\(([A-Za-z_$][\\w$]*)\\?\\.apps\\.length\\?\\?0\\)>0&&!1,([A-Za-z_$][\\w$]*);/;\nconst COMPOSER_PLUGIN_MENTIONS_GUARDED_SIGNATURE = /(additionalMarketplaceKinds:)\\[`shared-with-me`\\]/;\nconst COMPOSER_PLUGIN_MENTIONS_PATCHED_SIGNATURE = /(additionalMarketplaceKinds:)\\[\\]/;\nconst COMPOSER_PLUGIN_MENTIONS_GUARDED_SIGNATURE_FLAGGED = /(additionalMarketplaceKinds:)([A-Za-z_$][\\w$]*)\\?\\[`shared-with-me`\\]:\\[\\]/;\nconst COMPOSER_PLUGIN_MENTIONS_PATCHED_SIGNATURE_FLAGGED = /(additionalMarketplaceKinds:)([A-Za-z_$][\\w$]*)\\?\\[\\]:\\[\\]/;\nconst MODEL_LIST_GUARDED_SIGNATURE = /(\"list-models-for-host\":i9\\()\\(([A-Za-z_$][\\w$]*),\\{hostId:([A-Za-z_$][\\w$]*),\\.\\.\\.([A-Za-z_$][\\w$]*)\\}\\)=>\\2\\.sendRequest\\(`model\\/list`,\\4\\)(\\))/;\nconst MODEL_LIST_PATCHED_SIGNATURE = /(\"list-models-for-host\":i9\\()async\\(([A-Za-z_$][\\w$]*),\\{hostId:([A-Za-z_$][\\w$]*),\\.\\.\\.([A-Za-z_$][\\w$]*)\\}\\)=>\\/\\*codexfast-gpt55\\*\\/\\{let ([A-Za-z_$][\\w$]*)=await \\2\\.sendRequest\\(`model\\/list`,\\4\\);return Array\\.isArray\\(\\5\\.data\\)&&!\\5\\.data\\.some\\(e=>e\\.model===`gpt-5\\.5`\\)\\?\\{\\.\\.\\.\\5,data:\\[\\.\\.\\.\\5\\.data,\\{id:`gpt-5\\.5`[^]*?isDefault:!1\\}\\]\\}:\\5\\}(\\))/;\nconst MODEL_QUERY_GUARDED_SIGNATURE = /(\\}\\}\\),)([A-Za-z_$][\\w$]*)\\?\\?=([A-Za-z_$][\\w$]*)\\.models\\.find\\(e=>e\\.model===([A-Za-z_$][\\w$]*)\\.defaultModel\\)\\?\\?null,\\{modelsByType:\\3,defaultModel:\\2\\}/;\nconst MODEL_QUERY_PATCHED_SIGNATURE = /(\\}\\}\\),)\\/\\*codexfast-gpt55-select\\*\\/([A-Za-z_$][\\w$]*)\\.models\\.some\\(e=>e\\.model===`gpt-5\\.5`\\)\\|\\|\\2\\.models\\.push\\(\\{id:`gpt-5\\.5`[^]*?isDefault:!1\\}\\),([A-Za-z_$][\\w$]*)\\?\\?=\\2\\.models\\.find\\(e=>e\\.model===([A-Za-z_$][\\w$]*)\\.defaultModel\\)\\?\\?null,\\{modelsByType:\\2,defaultModel:\\3\\}/;\nfunction resolveSpeedAvailabilityCall(serviceTierFactory) {\n    const availabilityCalls = {\n        Ce: \"_e\",\n        se: \"ae\",\n        be: \"P\",\n        xe: \"P\",\n        ye: \"N\",\n        Ve: \"de\",\n        de: \"ie\",\n        fe: \"se\",\n    };\n    const availabilityCall = availabilityCalls[serviceTierFactory];\n    if (!availabilityCall) {\n        throw new Error(`Unsupported Speed setting service-tier factory: ${serviceTierFactory}.`);\n    }\n    return availabilityCall;\n}\nfunction normalizeLegacySpeedSetting(_match, enabledVariable, serviceTierSetup, serviceTierFactory) {\n    return `${enabledVariable}=${resolveSpeedAvailabilityCall(serviceTierFactory)}(),${serviceTierSetup}let `;\n}\nfunction restoreSpeedSetting(_match, enabledVariable, availabilityOrServiceTierSetup, serviceTierSetupOrFactory) {\n    if (availabilityOrServiceTierSetup.endsWith(\",\")) {\n        return `${enabledVariable}=${availabilityOrServiceTierSetup}${serviceTierSetupOrFactory}if(!${enabledVariable})return null;let `;\n    }\n    return `${enabledVariable}=${resolveSpeedAvailabilityCall(serviceTierSetupOrFactory)}(),${availabilityOrServiceTierSetup}if(!${enabledVariable})return null;let `;\n}\nfunction restorePluginsSidebar26506Qo(_match, prefix, authMethodVariable, pluginsExperimentVariable, authGateVariable, disabledPluginsVariable, between, pluginsLabelVariable, desktopNavVariable, pluginsEnabledVariable, delimiter) {\n    return `${prefix}${pluginsExperimentVariable}=Qo(\\`533078438\\`),${authGateVariable}=Xc(${authMethodVariable}),${disabledPluginsVariable}=${desktopNavVariable}&&${pluginsExperimentVariable}&&${authGateVariable},${between}${pluginsLabelVariable}=${desktopNavVariable}&&${pluginsEnabledVariable}&&!${authGateVariable}${delimiter}`;\n}\nfunction patchPluginsSidebar26513(_match, prefix, _authMethodVariable, experimentVariable, experimentCall, authGateVariable, authGateCall, disabledPluginsVariable, desktopNavVariable, navCapabilityVariable, navCapabilityCall, pluginsLabelVariable, delimiter) {\n    return `${prefix}${experimentVariable}=${experimentCall},${authGateVariable}=${authGateCall},${disabledPluginsVariable}=!1,${navCapabilityVariable}=${navCapabilityCall},${pluginsLabelVariable}=${desktopNavVariable}&&${navCapabilityVariable}${delimiter}`;\n}\nfunction restorePluginsSidebar26513(_match, prefix, _authMethodVariable, experimentVariable, experimentCall, authGateVariable, authGateCall, disabledPluginsVariable, navCapabilityVariable, navCapabilityCall, pluginsLabelVariable, desktopNavVariable, delimiter) {\n    return `${prefix}${experimentVariable}=${experimentCall},${authGateVariable}=${authGateCall},${disabledPluginsVariable}=${desktopNavVariable}&&${experimentVariable}&&${authGateVariable},${navCapabilityVariable}=${navCapabilityCall},${pluginsLabelVariable}=${desktopNavVariable}&&${navCapabilityVariable}&&!${authGateVariable}${delimiter}`;\n}\nconst TARGET_SPECS = [\n    {\n        id: \"speed-setting\",\n        label: \"Speed setting\",\n        needle: SPEED_LABEL_NEEDLE,\n        guardedSignature: GUARDED_SIGNATURE,\n        patchedSignature: NORMALIZED_PATCHED_SIGNATURE,\n        legacyPatchedSignature: PATCHED_SIGNATURE,\n        applyReplacement: \"$1=$2$3\",\n        normalizeReplacement: normalizeLegacySpeedSetting,\n        restoreReplacement: restoreSpeedSetting,\n    },\n    {\n        id: \"add-context-speed-menu-old\",\n        label: \"Add-context Speed menu\",\n        needle: ADD_CONTEXT_SPEED_NEEDLE,\n        guardedSignature: ADD_CONTEXT_SPEED_GUARDED_SIGNATURE_OLD,\n        patchedSignature: ADD_CONTEXT_SPEED_PATCHED_SIGNATURE_OLD,\n        legacyPatchedSignature: null,\n        applyReplacement: \"$1=!0,$2\",\n        restoreReplacement: \"$1=Cr(),$2\",\n    },\n    {\n        id: \"add-context-speed-menu-new\",\n        label: \"Add-context Speed menu\",\n        needle: ADD_CONTEXT_SPEED_NEEDLE,\n        guardedSignature: ADD_CONTEXT_SPEED_GUARDED_SIGNATURE_NEW,\n        patchedSignature: ADD_CONTEXT_SPEED_PATCHED_SIGNATURE_NEW,\n        legacyPatchedSignature: null,\n        applyReplacement: \"$1=!0,$2\",\n        restoreReplacement: \"$1=cr(),$2\",\n    },\n    {\n        id: \"intelligence-speed-menu\",\n        label: \"Composer Intelligence Speed menu\",\n        needle: INTELLIGENCE_SPEED_NEEDLE,\n        guardedSignature: INTELLIGENCE_SPEED_GUARDED_SIGNATURE,\n        patchedSignature: INTELLIGENCE_SPEED_PATCHED_SIGNATURE,\n        legacyPatchedSignature: null,\n        applyReplacement: \"$1$2=!0,\",\n        restoreReplacement: \"$1$2=_f(),\",\n    },\n    {\n        id: \"intelligence-speed-menu-gf\",\n        label: \"Composer Intelligence Speed menu\",\n        needle: INTELLIGENCE_SPEED_NEEDLE,\n        guardedSignature: INTELLIGENCE_SPEED_GUARDED_SIGNATURE_GF,\n        patchedSignature: INTELLIGENCE_SPEED_PATCHED_SIGNATURE_GF,\n        legacyPatchedSignature: null,\n        applyReplacement: \"$1$2=!0,\",\n        restoreReplacement: \"$1$2=gf(),\",\n    },\n    {\n        id: \"intelligence-speed-menu-qs\",\n        label: \"Composer Intelligence Speed menu\",\n        needle: INTELLIGENCE_SPEED_NEEDLE,\n        guardedSignature: INTELLIGENCE_SPEED_GUARDED_SIGNATURE_QS,\n        patchedSignature: INTELLIGENCE_SPEED_PATCHED_SIGNATURE_QS,\n        legacyPatchedSignature: null,\n        applyReplacement: \"$1$2=!0,$5\",\n        restoreReplacement: \"$1$2=$3($4),$5\",\n    },\n    {\n        id: \"intelligence-speed-menu-qa\",\n        label: \"Composer Intelligence Speed menu\",\n        needle: INTELLIGENCE_SPEED_NEEDLE,\n        guardedSignature: INTELLIGENCE_SPEED_GUARDED_SIGNATURE_QA,\n        patchedSignature: INTELLIGENCE_SPEED_PATCHED_SIGNATURE_QA,\n        legacyPatchedSignature: null,\n        applyReplacement: \"$1$2;$3!0$5\",\n        restoreReplacement: \"$1$2;$3$4$5\",\n    },\n    {\n        id: \"fast-slash-command\",\n        label: \"Fast slash command\",\n        needle: SPEED_SLASH_COMMAND_NEEDLE,\n        guardedSignature: SLASH_COMMAND_GUARDED_SIGNATURE,\n        patchedSignature: SLASH_COMMAND_PATCHED_SIGNATURE,\n        legacyPatchedSignature: null,\n        applyReplacement: \"$1!0$3\",\n    },\n    {\n        id: \"plugins-access-old\",\n        label: \"Plugins access\",\n        needle: PLUGINS_SIDEBAR_NEEDLE,\n        guardedSignature: PLUGINS_SIDEBAR_GUARDED_SIGNATURE_OLD,\n        patchedSignature: PLUGINS_SIDEBAR_PATCHED_SIGNATURE_OLD,\n        legacyPatchedSignature: null,\n        applyReplacement: \"$1$3=!1,\",\n        restoreReplacement: \"$1$3=$2===`apikey`,\",\n    },\n    {\n        id: \"plugins-access-new\",\n        label: \"Plugins access\",\n        needle: PLUGINS_SIDEBAR_NEEDLE,\n        guardedSignature: PLUGINS_SIDEBAR_GUARDED_SIGNATURE_NEW,\n        patchedSignature: PLUGINS_SIDEBAR_PATCHED_SIGNATURE_NEW,\n        legacyPatchedSignature: PLUGINS_SIDEBAR_LEGACY_PATCHED_SIGNATURE_NEW,\n        applyReplacement: \"$1$3=Fs(),$4=hf(`533078438`),$5=$2===`apikey`,$6=!1,$7=$3$8\",\n        normalizeReplacement: \"$1$3=Fs(),$4=hf(`533078438`),$5=$2===`apikey`,$6=!1,$7=$3$8\",\n        restoreReplacement: \"$1$3=Fs(),$4=hf(`533078438`),$5=$2===`apikey`,$6=$4&&$5,$7=$3&&!$5$8\",\n    },\n    {\n        id: \"plugins-access-26422\",\n        label: \"Plugins access\",\n        needle: PLUGINS_SIDEBAR_NEEDLE,\n        guardedSignature: PLUGINS_SIDEBAR_GUARDED_SIGNATURE_26422,\n        patchedSignature: PLUGINS_SIDEBAR_PATCHED_SIGNATURE_26422,\n        legacyPatchedSignature: PLUGINS_SIDEBAR_LEGACY_PATCHED_SIGNATURE_26422,\n        applyReplacement: \"$1$3=$4,$5=$2===`apikey`,$6=!1,$7$8=$9$10\",\n        normalizeReplacement: \"$1$3=$4,$5=$2===`apikey`,$6=!1,$7$8=$9$10\",\n        restoreReplacement: \"$1$3=$4,$5=$2===`apikey`,$6=$3&&$5,$7$8=$9&&!$5$10\",\n    },\n    {\n        id: \"plugins-access-26429\",\n        label: \"Plugins access\",\n        needle: PLUGINS_SIDEBAR_NEEDLE,\n        guardedSignature: PLUGINS_SIDEBAR_GUARDED_SIGNATURE_26429,\n        patchedSignature: PLUGINS_SIDEBAR_PATCHED_SIGNATURE_26429,\n        legacyPatchedSignature: PLUGINS_SIDEBAR_LEGACY_PATCHED_SIGNATURE_26429,\n        applyReplacement: \"$1$3=ms(`533078438`),$4=ed($2),$5=!1,$6$7=$8$9\",\n        normalizeReplacement: \"$1$3=ms(`533078438`),$4=ed($2),$5=!1,$6$7=$8$9\",\n        restoreReplacement: \"$1$3=ms(`533078438`),$4=ed($2),$5=$3&&$4,$6$7=$8&&!$4$9\",\n    },\n    {\n        id: \"plugins-access-26506\",\n        label: \"Plugins access\",\n        needle: PLUGINS_SIDEBAR_NEEDLE,\n        guardedSignature: PLUGINS_SIDEBAR_GUARDED_SIGNATURE_26506,\n        patchedSignature: PLUGINS_SIDEBAR_PATCHED_SIGNATURE_26506,\n        legacyPatchedSignature: null,\n        applyReplacement: \"$1$3=rs(`533078438`),$4=Xc($2),$5=!1,$7$8=$6&&$9$10\",\n        restoreReplacement: \"$1$3=rs(`533078438`),$4=Xc($2),$5=$6&&$3&&$4,$7$8=$6&&$9&&!$4$10\",\n    },\n    {\n        id: \"plugins-access-26506-qo\",\n        label: \"Plugins access\",\n        needle: PLUGINS_SIDEBAR_NEEDLE,\n        guardedSignature: PLUGINS_SIDEBAR_GUARDED_SIGNATURE_26506_QO,\n        patchedSignature: PLUGINS_SIDEBAR_PATCHED_SIGNATURE_26506_QO,\n        legacyPatchedSignature: null,\n        applyReplacement: \"$1$3=Qo(`533078438`),$4=Xc($2),$5=!1,$7$8=$6&&$9$10\",\n        restoreReplacement: restorePluginsSidebar26506Qo,\n    },\n    {\n        id: \"plugins-access-26513\",\n        label: \"Plugins access\",\n        needle: PLUGINS_SIDEBAR_NEEDLE,\n        guardedSignature: PLUGINS_SIDEBAR_GUARDED_SIGNATURE_26513,\n        patchedSignature: PLUGINS_SIDEBAR_PATCHED_SIGNATURE_26513,\n        legacyPatchedSignature: null,\n        applyReplacement: patchPluginsSidebar26513,\n        restoreReplacement: restorePluginsSidebar26513,\n    },\n    {\n        id: \"plugins-page-content-26429\",\n        label: \"Plugins page content\",\n        needle: PLUGINS_PAGE_CONTENT_NEEDLE,\n        guardedSignature: PLUGINS_PAGE_CONTENT_GUARDED_SIGNATURE,\n        patchedSignature: PLUGINS_PAGE_CONTENT_PATCHED_SIGNATURE,\n        legacyPatchedSignature: null,\n        applyReplacement: \"$1$2=!1,$4,$5;$6\",\n        restoreReplacement: \"$1$2=$3,$4,$5;$6\",\n    },\n    {\n        id: \"plugin-detail-access-26429\",\n        label: \"Plugin detail access\",\n        needle: PLUGIN_DETAIL_AUTH_NEEDLE,\n        guardedSignature: PLUGIN_DETAIL_AUTH_GUARDED_SIGNATURE,\n        patchedSignature: PLUGIN_DETAIL_AUTH_PATCHED_SIGNATURE,\n        legacyPatchedSignature: null,\n        applyReplacement: \"$1if(!1){\",\n        restoreReplacement: \"$1if($4($2)){\",\n    },\n    {\n        id: \"plugin-install-availability-26429\",\n        label: \"Plugin install availability\",\n        needle: PLUGIN_INSTALL_AVAILABILITY_NEEDLE,\n        guardedSignature: PLUGIN_INSTALL_AVAILABILITY_GUARDED_SIGNATURE,\n        patchedSignature: PLUGIN_INSTALL_AVAILABILITY_PATCHED_SIGNATURE,\n        legacyPatchedSignature: null,\n        applyReplacement: \"$1$2=$3.length>0&&$4===$3.length&&$5?`disabled-by-admin`:null,$6;\",\n        restoreReplacement: \"$1$2=$3.length>0&&$4===$3.length?$5?`disabled-by-admin`:`connector-unavailable`:null,$6;\",\n    },\n    {\n        id: \"plugin-install-availability-helper-26513\",\n        label: \"Plugin install availability\",\n        needle: \"connector-unavailable\",\n        guardedSignature: PLUGIN_INSTALL_AVAILABILITY_GUARDED_SIGNATURE,\n        patchedSignature: PLUGIN_INSTALL_AVAILABILITY_PATCHED_SIGNATURE,\n        legacyPatchedSignature: null,\n        applyReplacement: \"$1$2=$3.length>0&&$4===$3.length&&$5?`disabled-by-admin`:null,$6;\",\n        restoreReplacement: \"$1$2=$3.length>0&&$4===$3.length?$5?`disabled-by-admin`:`connector-unavailable`:null,$6;\",\n    },\n    {\n        id: \"plugin-install-modal-content-26429\",\n        label: \"Plugin install modal content\",\n        needle: PLUGIN_INSTALL_MODAL_CONTENT_NEEDLE,\n        guardedSignature: PLUGIN_INSTALL_MODAL_CONTENT_GUARDED_SIGNATURE,\n        patchedSignature: PLUGIN_INSTALL_MODAL_CONTENT_PATCHED_SIGNATURE,\n        legacyPatchedSignature: null,\n        applyReplacement: \"$1$2=$3,$4=($5?.apps.length??0)>0&&!1,$6;\",\n        restoreReplacement: \"$1$2=$3,$4=($5?.apps.length??0)>0&&$5?.summary.authPolicy===`ON_INSTALL`,$6;\",\n    },\n    {\n        id: \"composer-plugin-mentions-26513\",\n        label: \"Composer plugin mentions\",\n        needle: COMPOSER_PLUGIN_MENTIONS_NEEDLE,\n        guardedSignature: COMPOSER_PLUGIN_MENTIONS_GUARDED_SIGNATURE,\n        patchedSignature: COMPOSER_PLUGIN_MENTIONS_PATCHED_SIGNATURE,\n        legacyPatchedSignature: null,\n        applyReplacement: \"$1[]\",\n        restoreReplacement: \"$1[`shared-with-me`]\",\n    },\n    {\n        id: \"composer-plugin-mentions-26513-flagged\",\n        label: \"Composer plugin mentions\",\n        needle: COMPOSER_PLUGIN_MENTIONS_NEEDLE,\n        guardedSignature: COMPOSER_PLUGIN_MENTIONS_GUARDED_SIGNATURE_FLAGGED,\n        patchedSignature: COMPOSER_PLUGIN_MENTIONS_PATCHED_SIGNATURE_FLAGGED,\n        legacyPatchedSignature: null,\n        applyReplacement: \"$1$2?[]:[]\",\n        restoreReplacement: \"$1$2?[`shared-with-me`]:[]\",\n    },\n    {\n        id: \"gpt55-model-list\",\n        label: \"GPT-5.5 model list\",\n        needle: MODEL_LIST_NEEDLE,\n        guardedSignature: MODEL_LIST_GUARDED_SIGNATURE,\n        patchedSignature: MODEL_LIST_PATCHED_SIGNATURE,\n        legacyPatchedSignature: null,\n        applyReplacement: (_match, prefix, managerVar, hostVar, paramsVar, suffix) => `${prefix}async(${managerVar},{hostId:${hostVar},...${paramsVar}})=>/*codexfast-gpt55*/{let r=await ${managerVar}.sendRequest(\\`model/list\\`,${paramsVar});return Array.isArray(r.data)&&!r.data.some(e=>e.model===\\`gpt-5.5\\`)?{...r,data:[...r.data,${GPT_55_MODEL_ENTRY}]}:r}${suffix}`,\n        restoreReplacement: (_match, prefix, managerVar, hostVar, paramsVar, _resultVar, suffix) => `${prefix}(${managerVar},{hostId:${hostVar},...${paramsVar}})=>${managerVar}.sendRequest(\\`model/list\\`,${paramsVar})${suffix}`,\n    },\n    {\n        id: \"gpt55-model-query-selector\",\n        label: \"GPT-5.5 model query selector\",\n        needle: MODEL_QUERY_NEEDLE,\n        guardedSignature: MODEL_QUERY_GUARDED_SIGNATURE,\n        patchedSignature: MODEL_QUERY_PATCHED_SIGNATURE,\n        legacyPatchedSignature: null,\n        applyReplacement: (_match, prefix, defaultVar, modelsByTypeVar, configVar) => `${prefix}/*codexfast-gpt55-select*/${modelsByTypeVar}.models.some(e=>e.model===\\`gpt-5.5\\`)||${modelsByTypeVar}.models.push(${GPT_55_MODEL_ENTRY}),${defaultVar}??=${modelsByTypeVar}.models.find(e=>e.model===${configVar}.defaultModel)??null,{modelsByType:${modelsByTypeVar},defaultModel:${defaultVar}}`,\n        restoreReplacement: (_match, prefix, modelsByTypeVar, defaultVar, configVar) => `${prefix}${defaultVar}??=${modelsByTypeVar}.models.find(e=>e.model===${configVar}.defaultModel)??null,{modelsByType:${modelsByTypeVar},defaultModel:${defaultVar}}`,\n    },\n];\nfunction replaceContent(content, signature, replacement) {\n    if (typeof replacement === \"string\") {\n        return content.replace(signature, replacement);\n    }\n    return content.replace(signature, (...args) => replacement(String(args[0] ?? \"\"), ...args.slice(1).map((value) => String(value))));\n}\nfunction replaceContentOrThrow(content, signature, replacement, label) {\n    if (!signature || !replacement) {\n        throw new Error(`Missing replacement metadata for ${label}.`);\n    }\n    return replaceContent(content, signature, replacement);\n}\nfunction inspectSpec(content, spec) {\n    if (!content.includes(spec.needle)) {\n        return null;\n    }\n    const guarded = spec.guardedSignature.test(content);\n    const patched = spec.patchedSignature.test(content);\n    const legacyPatched = spec.legacyPatchedSignature?.test(content) ?? false;\n    if (!guarded && !patched && !legacyPatched) {\n        return null;\n    }\n    return {\n        spec,\n        guarded,\n        patched,\n        legacyPatched,\n    };\n}\nfunction describeState(match) {\n    if (match.guarded) {\n        return `${match.spec.label} disabled`;\n    }\n    if (match.patched || match.legacyPatched) {\n        return `${match.spec.label} enabled`;\n    }\n    return \"Unknown state\";\n}\nfunction applyRuntimePatchesToBody(_resourcePath, body) {\n    let content = body;\n    const matchedLabels = [];\n    const patchedLabels = [];\n    const alreadyPatchedLabels = [];\n    for (const spec of TARGET_SPECS) {\n        const match = inspectSpec(content, spec);\n        if (!match) {\n            continue;\n        }\n        matchedLabels.push(spec.label);\n        if (match.guarded) {\n            content = replaceContent(content, spec.guardedSignature, spec.applyReplacement);\n            patchedLabels.push(spec.label);\n            continue;\n        }\n        if (match.legacyPatched) {\n            content = replaceContentOrThrow(content, spec.legacyPatchedSignature, spec.normalizeReplacement, spec.label);\n            patchedLabels.push(spec.label);\n            continue;\n        }\n        if (match.patched) {\n            alreadyPatchedLabels.push(spec.label);\n        }\n    }\n    return {\n        content,\n        matchedLabels,\n        patchedLabels,\n        alreadyPatchedLabels,\n    };\n}\n// This module is transpiled to CommonJS by scripts/build-codexfast.mts and\n// executed via `node -`, where stdin defaults to CommonJS. Do not import it directly as ESM.\nconst fs = require(\"fs\");\nconst path = require(\"path\");\nconst [, , command, assetsDirArg, backupSuffix, legacyBackupSuffix = \"\", appVersionKey = \"unknown\"] = process.argv;\nconst assetsDir = path.resolve(assetsDirArg);\nconst backupSuffixes = [backupSuffix, legacyBackupSuffix].filter((suffix, index, suffixes) => suffix && suffixes.indexOf(suffix) === index);\nfunction isPresent(value) {\n    return value !== null;\n}\nfunction walkJsFiles(dir) {\n    const entries = fs.readdirSync(dir, { withFileTypes: true });\n    const results = [];\n    for (const entry of entries) {\n        const fullPath = path.join(dir, entry.name);\n        if (entry.isDirectory()) {\n            results.push(...walkJsFiles(fullPath));\n            continue;\n        }\n        if (entry.isFile() && entry.name.endsWith(\".js\")) {\n            results.push(fullPath);\n        }\n    }\n    return results;\n}\nfunction isGpt55ModelTarget(spec) {\n    return spec.id === \"gpt55-model-list\" || spec.id === \"gpt55-model-query-selector\";\n}\nfunction parseVersionParts(value) {\n    const version = value.split(\"+\", 1)[0];\n    return version.split(\".\").map((part) => {\n        const parsed = Number.parseInt(part, 10);\n        return Number.isFinite(parsed) ? parsed : 0;\n    });\n}\nfunction compareVersions(left, right) {\n    const leftParts = parseVersionParts(left);\n    const rightParts = parseVersionParts(right);\n    const length = Math.max(leftParts.length, rightParts.length);\n    for (let index = 0; index < length; index += 1) {\n        const leftPart = leftParts[index] ?? 0;\n        const rightPart = rightParts[index] ?? 0;\n        if (leftPart !== rightPart) {\n            return leftPart > rightPart ? 1 : -1;\n        }\n    }\n    return 0;\n}\nfunction hasOfficialGpt55ModelList() {\n    return compareVersions(appVersionKey, GPT_55_OFFICIAL_MODEL_LIST_MIN_VERSION) >= 0;\n}\nfunction isTargetRelevantForCommand(spec, state) {\n    if (!isGpt55ModelTarget(spec) || !hasOfficialGpt55ModelList()) {\n        return true;\n    }\n    if (command === \"apply\") {\n        return state.patched || state.legacyPatched;\n    }\n    if (command === \"status\" || command === \"restore\") {\n        return state.patched || state.legacyPatched;\n    }\n    return true;\n}\nfunction inspectFile(filePath) {\n    const content = fs.readFileSync(filePath, \"utf8\");\n    const matches = TARGET_SPECS\n        .map((spec) => inspectSpec(content, spec))\n        .filter(isPresent)\n        .filter((match) => isTargetRelevantForCommand(match.spec, match));\n    if (matches.length === 0) {\n        return null;\n    }\n    return {\n        filePath,\n        backupPath: `${filePath}${backupSuffix}`,\n        backupPaths: backupSuffixes.map((suffix) => `${filePath}${suffix}`),\n        content,\n        matches,\n    };\n}\nfunction findTargets(dir) {\n    return walkJsFiles(dir).map(inspectFile).filter(isPresent);\n}\nfunction writeBackupIfNeeded(fileTarget) {\n    if (findExistingBackupPath(fileTarget)) {\n        return;\n    }\n    fs.writeFileSync(fileTarget.backupPath, fileTarget.content, \"utf8\");\n}\nfunction findExistingBackupPath(fileTarget) {\n    return fileTarget.backupPaths.find((backupPath) => fs.existsSync(backupPath));\n}\nfunction resolveSlashCommandEnabledVariable(content) {\n    const match = content.match(/function OG\\(\\)\\{let [^;]*?,([A-Za-z_$][\\w$]*)=Lf\\(\\),/);\n    return match?.[1] ?? \"n\";\n}\nfunction status() {\n    const targets = findTargets(assetsDir);\n    if (targets.length === 0) {\n        console.log(`Feature target file not found: ${assetsDir}`);\n        return 1;\n    }\n    for (const target of targets) {\n        for (const match of target.matches) {\n            console.log(`Status: ${describeState(match)}`);\n        }\n    }\n    return 0;\n}\nfunction apply() {\n    const targets = findTargets(assetsDir);\n    if (targets.length === 0) {\n        console.log(`Feature target file not found: ${assetsDir}`);\n        return 1;\n    }\n    let changed = 0;\n    let alreadyPatched = 0;\n    for (const target of targets) {\n        let next = target.content;\n        let updated = false;\n        for (const match of target.matches) {\n            if (match.guarded) {\n                writeBackupIfNeeded(target);\n                next = replaceContent(next, match.spec.guardedSignature, match.spec.applyReplacement);\n                console.log(`patched: ${match.spec.label}`);\n                changed += 1;\n                updated = true;\n                continue;\n            }\n            if (match.legacyPatched) {\n                next = replaceContentOrThrow(next, match.spec.legacyPatchedSignature, match.spec.normalizeReplacement, match.spec.label);\n                console.log(`normalized: ${match.spec.label}`);\n                changed += 1;\n                updated = true;\n                continue;\n            }\n            if (match.patched) {\n                console.log(`already patched: ${match.spec.label}`);\n                alreadyPatched += 1;\n            }\n        }\n        if (updated) {\n            fs.writeFileSync(target.filePath, next, \"utf8\");\n        }\n    }\n    console.log(`summary: changed=${changed}, alreadyPatched=${alreadyPatched}`);\n    return 0;\n}\nfunction restore() {\n    const targets = findTargets(assetsDir);\n    if (targets.length === 0) {\n        console.log(`Feature target file not found: ${assetsDir}`);\n        return 1;\n    }\n    let restored = 0;\n    for (const target of targets) {\n        const existingBackupPath = findExistingBackupPath(target);\n        if (existingBackupPath) {\n            fs.writeFileSync(target.filePath, fs.readFileSync(existingBackupPath, \"utf8\"), \"utf8\");\n            for (const match of target.matches) {\n                console.log(`restored backup: ${match.spec.label}`);\n                restored += 1;\n            }\n            continue;\n        }\n        let next = target.content;\n        let updated = false;\n        for (const match of target.matches) {\n            if (!(match.patched || match.legacyPatched)) {\n                continue;\n            }\n            if (match.spec.id === \"fast-slash-command\") {\n                const enabledVariable = resolveSlashCommandEnabledVariable(next);\n                next = next.replace(match.spec.patchedSignature, `$1${enabledVariable}$2`);\n            }\n            else {\n                next = replaceContentOrThrow(next, match.patched ? match.spec.patchedSignature : match.spec.legacyPatchedSignature, match.spec.restoreReplacement, match.spec.label);\n            }\n            console.log(`restored inline: ${match.spec.label}`);\n            restored += 1;\n            updated = true;\n        }\n        if (updated) {\n            fs.writeFileSync(target.filePath, next, \"utf8\");\n        }\n    }\n    if (restored === 0) {\n        console.log(`No backup or modified target is available to restore.`);\n        return 1;\n    }\n    console.log(`summary: restored=${restored}`);\n    return 0;\n}\nlet exitCode = 1;\nswitch (command) {\n    case \"status\":\n        exitCode = status();\n        break;\n    case \"apply\":\n        exitCode = apply();\n        break;\n    case \"restore\":\n        exitCode = restore();\n        break;\n    default:\n        console.log(`Unknown command: ${command}`);\n        exitCode = 1;\n}\nprocess.exit(exitCode);\n";
 const __PACKAGE_VERSION__ = "0.17.0";
 const SUPPORTED_APP_VERSIONS = { "26.415.40636+1799": "Codex.app 26.415.40636 build 1799", "26.417.41555+1858": "Codex.app 26.417.41555 build 1858", "26.422.21637+2056": "Codex.app 26.422.21637 build 2056", "26.422.30944+2080": "Codex.app 26.422.30944 build 2080", "26.422.62136+2176": "Codex.app 26.422.62136 build 2176", "26.422.62136+2180": "Codex.app 26.422.62136 build 2180", "26.422.71525+2210": "Codex.app 26.422.71525 build 2210", "26.429.20946+2312": "Codex.app 26.429.20946 build 2312", "26.429.30905+2345": "Codex.app 26.429.30905 build 2345", "26.429.61741+2429": "Codex.app 26.429.61741 build 2429", "26.506.21252+2575": "Codex.app 26.506.21252 build 2575", "26.506.31421+2620": "Codex.app 26.506.31421 build 2620", "26.513.20950+2816": "Codex.app 26.513.20950 build 2816", "26.513.31313+2867": "Codex.app 26.513.31313 build 2867" };
-const appBundle = process.env.CODEXFAST_APP_BUNDLE ?? "/Applications/Codex.app";
-const appResources = (0, node_path_1.join)(appBundle, "Contents", "Resources");
-const appInfoPlist = (0, node_path_1.join)(appBundle, "Contents", "Info.plist");
-const appAsar = (0, node_path_1.join)(appResources, "app.asar");
-const appAsarBackup = (0, node_path_1.join)(appResources, "app.asar1");
-const sparklePublicEdKeyBackup = (0, node_path_1.join)(appResources, "SUPublicEDKey.codexfast.bak");
+const context = createCodexfastContext();
 const backupSuffix = ".codexfast.bak";
 const legacyBackupSuffix = ".speed-setting.bak";
 const asarPackage = "@electron/asar@3.4.1";
@@ -127,20 +167,6 @@ const launchAgentFileName = `${launchAgentLabel}.plist`;
 const SPARKLE_PUBLIC_ED_KEY_BRIDGES = {
     "26.506.31421+2620": "mNfr1v9t63BfgDtlw4C8lRvSY6uMggIXABDOCi3tS6k=",
 };
-let tempRoot = "";
-let tempAppDir = "";
-let tempAssetsDir = "";
-let tempAsar = "";
-let appVersion = "unknown";
-let appBuild = "unknown";
-let appVersionKey = "unknown+unknown";
-let appCompatibility = "unsupported";
-let appVersionSupported = false;
-let nodeBin = "";
-let npmBin = "";
-let npxBin = "";
-let codesignBin = "";
-let plistBuddyBin = "";
 const runtimePatchConnectTimeoutMs = 12_000;
 const runtimePatchSessionTimeoutMs = 12_000;
 const runtimePatchSettleMs = 750;
@@ -562,32 +588,32 @@ function launchctlDomain() {
     return `gui/${getuid()}`;
 }
 function readBundlePlistValue(key, fallback = "unknown") {
-    const result = run(plistBuddyBin, ["-c", `Print :${key}`, appInfoPlist]);
+    const result = run(context.toolchain.plistBuddy, ["-c", `Print :${key}`, context.paths.infoPlist]);
     return result.status === 0 ? result.stdout.trim() : fallback;
 }
 function loadAppCompatibilityMetadata() {
-    appVersion = readBundlePlistValue("CFBundleShortVersionString");
-    appBuild = readBundlePlistValue("CFBundleVersion");
-    appVersionKey = `${appVersion}+${appBuild}`;
-    appVersionSupported = Object.prototype.hasOwnProperty.call(SUPPORTED_APP_VERSIONS, appVersionKey);
-    appCompatibility = appVersionSupported ? `supported (${SUPPORTED_APP_VERSIONS[appVersionKey]})` : "unsupported";
+    context.metadata.version = readBundlePlistValue("CFBundleShortVersionString");
+    context.metadata.build = readBundlePlistValue("CFBundleVersion");
+    context.metadata.versionKey = `${context.metadata.version}+${context.metadata.build}`;
+    context.metadata.supported = Object.prototype.hasOwnProperty.call(SUPPORTED_APP_VERSIONS, context.metadata.versionKey);
+    context.metadata.compatibility = context.metadata.supported ? `supported (${SUPPORTED_APP_VERSIONS[context.metadata.versionKey]})` : "unsupported";
 }
 function cleanupTempWorkspace() {
-    if (tempRoot && (0, node_fs_1.existsSync)(tempRoot)) {
-        (0, node_fs_1.rmSync)(tempRoot, { recursive: true, force: true });
+    if (context.temp.root && (0, node_fs_1.existsSync)(context.temp.root)) {
+        (0, node_fs_1.rmSync)(context.temp.root, { recursive: true, force: true });
     }
-    tempRoot = "";
-    tempAppDir = "";
-    tempAssetsDir = "";
-    tempAsar = "";
+    context.temp.root = "";
+    context.temp.appDir = "";
+    context.temp.assetsDir = "";
+    context.temp.asar = "";
 }
 function createTempWorkspace() {
     cleanupTempWorkspace();
     try {
-        tempRoot = (0, node_fs_1.mkdtempSync)((0, node_path_1.join)((0, node_os_1.tmpdir)(), "codexfast."));
-        tempAppDir = (0, node_path_1.join)(tempRoot, "app");
-        tempAssetsDir = (0, node_path_1.join)(tempAppDir, "webview", "assets");
-        tempAsar = (0, node_path_1.join)(tempRoot, "app.asar");
+        context.temp.root = (0, node_fs_1.mkdtempSync)((0, node_path_1.join)((0, node_os_1.tmpdir)(), "codexfast."));
+        context.temp.appDir = (0, node_path_1.join)(context.temp.root, "app");
+        context.temp.assetsDir = (0, node_path_1.join)(context.temp.appDir, "webview", "assets");
+        context.temp.asar = (0, node_path_1.join)(context.temp.root, "app.asar");
         return true;
     }
     catch {
@@ -596,7 +622,7 @@ function createTempWorkspace() {
     }
 }
 function runAsar(args) {
-    const result = run(npmBin, ["exec", "--yes", "--package", asarPackage, "--", "asar", ...args]);
+    const result = run(context.toolchain.npm, ["exec", "--yes", "--package", asarPackage, "--", "asar", ...args]);
     if (result.status !== 0) {
         process.stdout.write(result.stdout);
         process.stderr.write(result.stderr);
@@ -605,11 +631,11 @@ function runAsar(args) {
     return true;
 }
 function readAsarIntegrityHash() {
-    const result = run(plistBuddyBin, ["-c", "Print :ElectronAsarIntegrity:Resources/app.asar:hash", appInfoPlist]);
+    const result = run(context.toolchain.plistBuddy, ["-c", "Print :ElectronAsarIntegrity:Resources/app.asar:hash", context.paths.infoPlist]);
     return result.status === 0 ? result.stdout.trim() : "";
 }
 function writeAsarIntegrityHash(hash, options = {}) {
-    const setResult = run(plistBuddyBin, ["-c", `Set :ElectronAsarIntegrity:Resources/app.asar:hash ${hash}`, appInfoPlist]);
+    const setResult = run(context.toolchain.plistBuddy, ["-c", `Set :ElectronAsarIntegrity:Resources/app.asar:hash ${hash}`, context.paths.infoPlist]);
     if (setResult.status !== 0) {
         printLine(options.failureMessage ?? "Failed to update ElectronAsarIntegrity hash in Info.plist.");
         return false;
@@ -624,9 +650,9 @@ function readSparklePublicEdKey() {
     return readBundlePlistValue("SUPublicEDKey", "");
 }
 function writeSparklePublicEdKey(value) {
-    const setResult = run(plistBuddyBin, ["-c", `Set :SUPublicEDKey ${value}`, appInfoPlist]);
+    const setResult = run(context.toolchain.plistBuddy, ["-c", `Set :SUPublicEDKey ${value}`, context.paths.infoPlist]);
     if (setResult.status !== 0) {
-        const addResult = run(plistBuddyBin, ["-c", `Add :SUPublicEDKey string ${value}`, appInfoPlist]);
+        const addResult = run(context.toolchain.plistBuddy, ["-c", `Add :SUPublicEDKey string ${value}`, context.paths.infoPlist]);
         if (addResult.status !== 0) {
             return false;
         }
@@ -634,7 +660,7 @@ function writeSparklePublicEdKey(value) {
     return readSparklePublicEdKey() === value;
 }
 function syncSparklePublicEdKeyForInAppUpdates() {
-    const targetKey = SPARKLE_PUBLIC_ED_KEY_BRIDGES[appVersionKey];
+    const targetKey = SPARKLE_PUBLIC_ED_KEY_BRIDGES[context.metadata.versionKey];
     if (!targetKey) {
         return { changed: false, ok: true };
     }
@@ -643,8 +669,8 @@ function syncSparklePublicEdKeyForInAppUpdates() {
         return { changed: false, ok: true };
     }
     try {
-        if (!(0, node_fs_1.existsSync)(sparklePublicEdKeyBackup)) {
-            (0, node_fs_1.writeFileSync)(sparklePublicEdKeyBackup, currentKey, "utf8");
+        if (!(0, node_fs_1.existsSync)(context.paths.sparklePublicEdKeyBackup)) {
+            (0, node_fs_1.writeFileSync)(context.paths.sparklePublicEdKeyBackup, currentKey, "utf8");
         }
     }
     catch {
@@ -659,12 +685,12 @@ function syncSparklePublicEdKeyForInAppUpdates() {
     return { changed: true, ok: true };
 }
 function restoreSparklePublicEdKeyBackup() {
-    if (!(0, node_fs_1.existsSync)(sparklePublicEdKeyBackup)) {
+    if (!(0, node_fs_1.existsSync)(context.paths.sparklePublicEdKeyBackup)) {
         return { changed: false, ok: true };
     }
     let originalKey = "";
     try {
-        originalKey = (0, node_fs_1.readFileSync)(sparklePublicEdKeyBackup, "utf8").trim();
+        originalKey = (0, node_fs_1.readFileSync)(context.paths.sparklePublicEdKeyBackup, "utf8").trim();
     }
     catch {
         printLine("Failed to read the Sparkle public EdDSA key backup.");
@@ -675,7 +701,7 @@ function restoreSparklePublicEdKeyBackup() {
         return { changed: false, ok: false };
     }
     try {
-        (0, node_fs_1.rmSync)(sparklePublicEdKeyBackup, { force: true });
+        (0, node_fs_1.rmSync)(context.paths.sparklePublicEdKeyBackup, { force: true });
     }
     catch {
         printLine("Failed to remove the Sparkle public EdDSA key backup.");
@@ -684,7 +710,7 @@ function restoreSparklePublicEdKeyBackup() {
     printLine("Restored Sparkle public EdDSA key backup.");
     return { changed: true, ok: true };
 }
-function calculateAsarHeaderHash(archivePath = appAsar) {
+function calculateAsarHeaderHash(archivePath = context.paths.asar) {
     try {
         const archive = (0, node_fs_1.readFileSync)(archivePath);
         const headerStringSize = archive.readUInt32LE(12);
@@ -712,16 +738,16 @@ function updateAsarIntegrityMetadata() {
     return true;
 }
 function createArchiveSnapshot() {
-    if (!tempRoot && !createTempWorkspace()) {
+    if (!context.temp.root && !createTempWorkspace()) {
         return null;
     }
     const integrityHash = readAsarIntegrityHash();
-    if (!(0, node_fs_1.existsSync)(appAsar)) {
+    if (!(0, node_fs_1.existsSync)(context.paths.asar)) {
         return { archivePath: null, integrityHash };
     }
-    const archivePath = (0, node_path_1.join)(tempRoot, "previous.app.asar");
+    const archivePath = (0, node_path_1.join)(context.temp.root, "previous.app.asar");
     try {
-        (0, node_fs_1.copyFileSync)(appAsar, archivePath);
+        (0, node_fs_1.copyFileSync)(context.paths.asar, archivePath);
         return { archivePath, integrityHash };
     }
     catch {
@@ -738,7 +764,7 @@ function restoreArchiveSnapshot(snapshot) {
     else {
         printLine("Removing app.asar created during failed integrity update.");
         try {
-            (0, node_fs_1.rmSync)(appAsar, { force: true });
+            (0, node_fs_1.rmSync)(context.paths.asar, { force: true });
             archiveRestored = true;
         }
         catch {
@@ -755,13 +781,13 @@ function restoreArchiveSnapshot(snapshot) {
     return archiveRestored && integrityRestored;
 }
 function ensureArchiveBackup() {
-    if ((0, node_fs_1.existsSync)(appAsarBackup)) {
-        printLine(`Archive backup already exists: ${appAsarBackup}`);
+    if ((0, node_fs_1.existsSync)(context.paths.asarBackup)) {
+        printLine(`Archive backup already exists: ${context.paths.asarBackup}`);
         return true;
     }
     try {
-        (0, node_fs_1.writeFileSync)(appAsarBackup, (0, node_fs_1.readFileSync)(appAsar));
-        printLine(`Created archive backup: ${appAsarBackup}`);
+        (0, node_fs_1.writeFileSync)(context.paths.asarBackup, (0, node_fs_1.readFileSync)(context.paths.asar));
+        printLine(`Created archive backup: ${context.paths.asarBackup}`);
         return true;
     }
     catch {
@@ -773,33 +799,33 @@ function unpackAppAsarToTemp() {
     if (!createTempWorkspace()) {
         return false;
     }
-    if (!runAsar(["e", appAsar, tempAppDir])) {
+    if (!runAsar(["e", context.paths.asar, context.temp.appDir])) {
         printLine("Failed to unpack app.asar.");
         return false;
     }
-    if (!(0, node_fs_1.existsSync)(tempAssetsDir)) {
-        printLine(`Assets directory not found: ${tempAssetsDir}`);
+    if (!(0, node_fs_1.existsSync)(context.temp.assetsDir)) {
+        printLine(`Assets directory not found: ${context.temp.assetsDir}`);
         return false;
     }
     return true;
 }
 function packTempAppToAsar() {
-    if (!tempAsar) {
+    if (!context.temp.asar) {
         printLine("Temporary archive path is not available.");
         return false;
     }
-    if (!runAsar(["p", tempAppDir, tempAsar])) {
+    if (!runAsar(["p", context.temp.appDir, context.temp.asar])) {
         printLine("Failed to repack app.asar.");
         return false;
     }
     return true;
 }
 function replaceAppAsarFrom(sourceArchive, failureMessage) {
-    const targetTempAsar = (0, node_path_1.join)(appResources, `.codexfast.${process.pid}.${(0, node_crypto_1.randomBytes)(6).toString("hex")}.app.asar.tmp`);
+    const targetTempAsar = (0, node_path_1.join)(context.paths.resources, `.codexfast.${process.pid}.${(0, node_crypto_1.randomBytes)(6).toString("hex")}.app.asar.tmp`);
     try {
         (0, node_fs_1.rmSync)(targetTempAsar, { force: true });
         (0, node_fs_1.copyFileSync)(sourceArchive, targetTempAsar);
-        (0, node_fs_1.renameSync)(targetTempAsar, appAsar);
+        (0, node_fs_1.renameSync)(targetTempAsar, context.paths.asar);
         return true;
     }
     catch {
@@ -821,15 +847,15 @@ function commitArchiveWithIntegrity(sourceArchive, snapshot) {
     return false;
 }
 function cleanupStaleArchiveTempFiles() {
-    if (!(0, node_fs_1.existsSync)(appResources)) {
+    if (!(0, node_fs_1.existsSync)(context.paths.resources)) {
         return;
     }
     const staleBeforeMs = Date.now() - staleArchiveTempFileMs;
-    for (const entry of (0, node_fs_1.readdirSync)(appResources)) {
+    for (const entry of (0, node_fs_1.readdirSync)(context.paths.resources)) {
         if (!entry.startsWith(".codexfast.") || !entry.endsWith(".app.asar.tmp")) {
             continue;
         }
-        const tempFile = (0, node_path_1.join)(appResources, entry);
+        const tempFile = (0, node_path_1.join)(context.paths.resources, entry);
         try {
             if ((0, node_fs_1.statSync)(tempFile).mtimeMs < staleBeforeMs) {
                 (0, node_fs_1.rmSync)(tempFile, { force: true });
@@ -841,7 +867,7 @@ function cleanupStaleArchiveTempFiles() {
     }
 }
 function migrateLegacyUnpackedLayout() {
-    const unpackedAppDir = (0, node_path_1.join)(appResources, "app");
+    const unpackedAppDir = (0, node_path_1.join)(context.paths.resources, "app");
     if (!(0, node_fs_1.existsSync)(unpackedAppDir)) {
         return true;
     }
@@ -850,7 +876,7 @@ function migrateLegacyUnpackedLayout() {
         return false;
     }
     try {
-        if (!(0, node_fs_1.existsSync)(appAsarBackup) && (0, node_fs_1.existsSync)(appAsar)) {
+        if (!(0, node_fs_1.existsSync)(context.paths.asarBackup) && (0, node_fs_1.existsSync)(context.paths.asar)) {
             if (!ensureArchiveBackup()) {
                 return false;
             }
@@ -859,11 +885,11 @@ function migrateLegacyUnpackedLayout() {
         if (!snapshot) {
             return false;
         }
-        if (!runAsar(["p", unpackedAppDir, tempAsar])) {
+        if (!runAsar(["p", unpackedAppDir, context.temp.asar])) {
             printLine("Failed to repack legacy Resources/app directory.");
             return false;
         }
-        if (!commitArchiveWithIntegrity(tempAsar, snapshot)) {
+        if (!commitArchiveWithIntegrity(context.temp.asar, snapshot)) {
             return false;
         }
         (0, node_fs_1.rmSync)(unpackedAppDir, { recursive: true, force: true });
@@ -874,7 +900,7 @@ function migrateLegacyUnpackedLayout() {
     }
 }
 function restoreFromArchiveBackup() {
-    if (!(0, node_fs_1.existsSync)(appAsarBackup)) {
+    if (!(0, node_fs_1.existsSync)(context.paths.asarBackup)) {
         return false;
     }
     if (!createTempWorkspace()) {
@@ -885,8 +911,8 @@ function restoreFromArchiveBackup() {
         if (!snapshot) {
             return false;
         }
-        printLine(`Restoring app.asar from archive backup: ${appAsarBackup}`);
-        if (!commitArchiveWithIntegrity(appAsarBackup, snapshot)) {
+        printLine(`Restoring app.asar from archive backup: ${context.paths.asarBackup}`);
+        if (!commitArchiveWithIntegrity(context.paths.asarBackup, snapshot)) {
             return false;
         }
         const metadataChange = restoreSparklePublicEdKeyBackup();
@@ -904,15 +930,15 @@ function restoreFromArchiveBackup() {
 }
 function printManualResignGuidance() {
     printLine("Manual fallback:");
-    printLine(`  codesign --force --deep --sign - ${appBundle}`);
-    printLine(`  codesign --verify --deep --strict --verbose=2 ${appBundle}`);
+    printLine(`  codesign --force --deep --sign - ${context.paths.bundle}`);
+    printLine(`  codesign --verify --deep --strict --verbose=2 ${context.paths.bundle}`);
     printLine("If verification still fails, run Restore original app or reinstall Codex.app.");
 }
 function officialCodexDownloadUrl() {
-    if (!appVersion || appVersion === "unknown") {
+    if (!context.metadata.version || context.metadata.version === "unknown") {
         return null;
     }
-    return `https://persistent.oaistatic.com/codex-app-prod/Codex-darwin-arm64-${appVersion}.zip`;
+    return `https://persistent.oaistatic.com/codex-app-prod/Codex-darwin-arm64-${context.metadata.version}.zip`;
 }
 function printOfficialReinstallGuidanceAfterRestore() {
     printLine("");
@@ -930,7 +956,7 @@ function printOfficialReinstallGuidanceAfterRestore() {
 function resignAppBundle(reason) {
     printLine(reason);
     printLine("Running local ad-hoc re-sign...");
-    const result = run(codesignBin, ["--force", "--deep", "--sign", "-", appBundle]);
+    const result = run(context.toolchain.codesign, ["--force", "--deep", "--sign", "-", context.paths.bundle]);
     if (result.status !== 0) {
         process.stdout.write(result.stdout);
         process.stderr.write(result.stderr);
@@ -938,7 +964,7 @@ function resignAppBundle(reason) {
         printManualResignGuidance();
         return false;
     }
-    const verifyResult = run(codesignBin, ["--verify", "--deep", "--strict", "--verbose=2", appBundle]);
+    const verifyResult = run(context.toolchain.codesign, ["--verify", "--deep", "--strict", "--verbose=2", context.paths.bundle]);
     if (verifyResult.status !== 0) {
         process.stdout.write(verifyResult.stdout);
         process.stderr.write(verifyResult.stderr);
@@ -950,37 +976,37 @@ function resignAppBundle(reason) {
     return true;
 }
 function checkRequirements(options = {}) {
-    if (!(0, node_fs_1.existsSync)(appResources)) {
-        printLine(`Codex resources directory not found: ${appResources}`);
-        printLine(`Make sure Codex.app is installed at ${appBundle}.`);
+    if (!(0, node_fs_1.existsSync)(context.paths.resources)) {
+        printLine(`Codex resources directory not found: ${context.paths.resources}`);
+        printLine(`Make sure Codex.app is installed at ${context.paths.bundle}.`);
         return false;
     }
-    nodeBin = process.execPath;
-    plistBuddyBin = resolvePlistBuddy() ?? "";
-    if (!plistBuddyBin) {
+    context.toolchain.node = process.execPath;
+    context.toolchain.plistBuddy = resolvePlistBuddy() ?? "";
+    if (!context.toolchain.plistBuddy) {
         printLine("PlistBuddy not found.");
         printLine("This macOS environment cannot update ElectronAsarIntegrity in Info.plist.");
         return false;
     }
     cleanupStaleArchiveTempFiles();
     loadAppCompatibilityMetadata();
-    if ((options.command === "repair" && !appVersionSupported) || options.command === "launch") {
+    if ((options.command === "repair" && !context.metadata.supported) || options.command === "launch") {
         return true;
     }
-    npmBin = resolveCommand("npm") ?? "";
-    npxBin = resolveCommand("npx") ?? "";
-    codesignBin = resolveCommand("codesign") ?? "";
-    if (!npmBin) {
+    context.toolchain.npm = resolveCommand("npm") ?? "";
+    context.toolchain.npx = resolveCommand("npx") ?? "";
+    context.toolchain.codesign = resolveCommand("codesign") ?? "";
+    if (!context.toolchain.npm) {
         printLine("npm not found.");
         printLine("Make sure npm is available in your shell.");
         return false;
     }
-    if (options.command === "install-watcher" && !npxBin) {
+    if (options.command === "install-watcher" && !context.toolchain.npx) {
         printLine("npx not found.");
         printLine("Make sure npx is available in your shell.");
         return false;
     }
-    if (!codesignBin) {
+    if (!context.toolchain.codesign) {
         printLine("codesign not found.");
         printLine("This macOS environment cannot perform local re-signing.");
         return false;
@@ -990,15 +1016,15 @@ function checkRequirements(options = {}) {
 function printActionHeader(action) {
     printLine("");
     printLine(`Action: ${action}`);
-    printLine(`Resources: ${appResources}`);
-    printLine(`Detected version: ${appVersion}`);
-    printLine(`Detected build: ${appBuild}`);
-    printLine(`Compatibility: ${appCompatibility}`);
+    printLine(`Resources: ${context.paths.resources}`);
+    printLine(`Detected version: ${context.metadata.version}`);
+    printLine(`Detected build: ${context.metadata.build}`);
+    printLine(`Compatibility: ${context.metadata.compatibility}`);
     printLine("Mode: self-contained single file");
     printLine("");
 }
 function validateActionRequest(action) {
-    if ((action === "apply" || action === "repair") && !appVersionSupported) {
+    if ((action === "apply" || action === "repair") && !context.metadata.supported) {
         if (action === "repair") {
             printLine("Repair skipped because this Codex.app build is unsupported.");
             printLine("No app files were modified.");
@@ -1064,7 +1090,7 @@ function parseApplySummary(output) {
 }
 function runEmbeddedPatcher(action) {
     const patcherAction = action === "repair" ? "apply" : action;
-    const result = run(nodeBin, ["-", patcherAction, tempAssetsDir, backupSuffix, legacyBackupSuffix, appVersionKey], {
+    const result = run(context.toolchain.node, ["-", patcherAction, context.temp.assetsDir, backupSuffix, legacyBackupSuffix, context.metadata.versionKey], {
         input: __PATCHER_SOURCE__,
     });
     process.stdout.write(result.stdout);
@@ -1082,7 +1108,7 @@ function finalizeModifiedArchive(action) {
     if (!packTempAppToAsar()) {
         return false;
     }
-    if (!commitArchiveWithIntegrity(tempAsar, snapshot)) {
+    if (!commitArchiveWithIntegrity(context.temp.asar, snapshot)) {
         return false;
     }
     if (action === "apply" || action === "repair") {
@@ -1109,11 +1135,11 @@ function runEmbeddedTool(action) {
     if (!migrateLegacyUnpackedLayout()) {
         return 1;
     }
-    if (!(0, node_fs_1.existsSync)(appAsar)) {
-        printLine(`app.asar not found: ${appAsar}`);
+    if (!(0, node_fs_1.existsSync)(context.paths.asar)) {
+        printLine(`app.asar not found: ${context.paths.asar}`);
         return 1;
     }
-    if (action === "restore" && (0, node_fs_1.existsSync)(appAsarBackup)) {
+    if (action === "restore" && (0, node_fs_1.existsSync)(context.paths.asarBackup)) {
         exitCode = restoreFromArchiveBackup() ? 0 : 1;
         if (exitCode === 0) {
             printOfficialReinstallGuidanceAfterRestore();
@@ -1184,7 +1210,7 @@ function randomDebugPort() {
     return 40_000 + (0, node_crypto_1.randomBytes)(2).readUInt16BE(0) % 20_000;
 }
 function codexExecutablePath() {
-    return (0, node_path_1.join)(appBundle, "Contents", "MacOS", "Codex");
+    return (0, node_path_1.join)(context.paths.bundle, "Contents", "MacOS", "Codex");
 }
 function launchCodexProcess(debugPort) {
     const executable = codexExecutablePath();
@@ -1704,7 +1730,7 @@ function waitForRuntimeLaunchProcessExit(child) {
 }
 async function runRuntimeLaunch() {
     printActionHeader("launch");
-    if (!appVersionSupported) {
+    if (!context.metadata.supported) {
         printLine("Runtime launch is blocked for this Codex.app version.");
         printLine(`Supported versions: ${supportedAppVersionKeys}`);
         printLine("");
@@ -1784,7 +1810,7 @@ function watcherRunnerSource() {
     return `#!/usr/bin/env node
 const { spawnSync } = require("node:child_process");
 
-const result = spawnSync(${JSON.stringify(npxBin)}, ["--yes", "codexfast@latest", "repair"], {
+const result = spawnSync(${JSON.stringify(context.toolchain.npx)}, ["--yes", "codexfast@latest", "repair"], {
   stdio: "inherit",
   env: process.env,
 });
@@ -1797,10 +1823,10 @@ process.exit(result.status ?? 1);
 `;
 }
 function writeWatcherRunner() {
-    if (!npxBin) {
-        npxBin = resolveCommand("npx") ?? "";
+    if (!context.toolchain.npx) {
+        context.toolchain.npx = resolveCommand("npx") ?? "";
     }
-    if (!npxBin) {
+    if (!context.toolchain.npx) {
         printLine("npx not found.");
         printLine("Make sure npx is available in your shell.");
         return false;
@@ -1818,7 +1844,7 @@ function writeWatcherRunner() {
 }
 function watcherPlist() {
     const environmentEntries = [
-        ["CODEXFAST_APP_BUNDLE", appBundle],
+        ["CODEXFAST_APP_BUNDLE", context.paths.bundle],
         ["PATH", process.env.PATH ?? "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"],
     ];
     const environmentXml = environmentEntries
@@ -1841,7 +1867,7 @@ ${environmentXml}
   </dict>
   <key>WatchPaths</key>
   <array>
-    <string>${escapeXml(appAsar)}</string>
+    <string>${escapeXml(context.paths.asar)}</string>
   </array>
   <key>RunAtLoad</key>
   <true/>
@@ -1871,8 +1897,8 @@ function runLaunchctl(args, options = {}) {
 }
 function installWatcher() {
     printActionHeader("install-watcher");
-    if (!(0, node_fs_1.existsSync)(appAsar)) {
-        printLine(`app.asar not found: ${appAsar}`);
+    if (!(0, node_fs_1.existsSync)(context.paths.asar)) {
+        printLine(`app.asar not found: ${context.paths.asar}`);
         printLine("");
         printLine("Exit code: 1");
         return 1;

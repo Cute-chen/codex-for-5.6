@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { spawn, type ChildProcess } from "node:child_process";
+import { createCodexfastContext, emptyTempWorkspace } from "./cli-context.mts";
 import { asError, debugRuntime, escapeXml, printLine, resolveCommand, resolvePlistBuddy, run, sleep } from "./cli-utils.mts";
 
 declare const __PATCHER_SOURCE__: string;
@@ -15,12 +16,7 @@ declare const __PACKAGE_VERSION__: string;
 declare const __SUPPORTED_APP_VERSIONS__: Record<string, string>;
 
 const SUPPORTED_APP_VERSIONS = __SUPPORTED_APP_VERSIONS__;
-const appBundle = process.env.CODEXFAST_APP_BUNDLE ?? "/Applications/Codex.app";
-const appResources = join(appBundle, "Contents", "Resources");
-const appInfoPlist = join(appBundle, "Contents", "Info.plist");
-const appAsar = join(appResources, "app.asar");
-const appAsarBackup = join(appResources, "app.asar1");
-const sparklePublicEdKeyBackup = join(appResources, "SUPublicEDKey.codexfast.bak");
+const context = createCodexfastContext();
 const backupSuffix = ".codexfast.bak";
 const legacyBackupSuffix = ".speed-setting.bak";
 const asarPackage = "@electron/asar@3.4.1";
@@ -31,21 +27,6 @@ const launchAgentFileName = `${launchAgentLabel}.plist`;
 const SPARKLE_PUBLIC_ED_KEY_BRIDGES: Record<string, string> = {
   "26.506.31421+2620": "mNfr1v9t63BfgDtlw4C8lRvSY6uMggIXABDOCi3tS6k=",
 };
-
-let tempRoot = "";
-let tempAppDir = "";
-let tempAssetsDir = "";
-let tempAsar = "";
-let appVersion = "unknown";
-let appBuild = "unknown";
-let appVersionKey = "unknown+unknown";
-let appCompatibility = "unsupported";
-let appVersionSupported = false;
-let nodeBin = "";
-let npmBin = "";
-let npxBin = "";
-let codesignBin = "";
-let plistBuddyBin = "";
 
 type ArchiveSnapshot = {
   archivePath: string | null;
@@ -579,35 +560,35 @@ function launchctlDomain(): string {
 }
 
 function readBundlePlistValue(key: string, fallback = "unknown"): string {
-  const result = run(plistBuddyBin, ["-c", `Print :${key}`, appInfoPlist]);
+  const result = run(context.toolchain.plistBuddy, ["-c", `Print :${key}`, context.paths.infoPlist]);
   return result.status === 0 ? result.stdout.trim() : fallback;
 }
 
 function loadAppCompatibilityMetadata(): void {
-  appVersion = readBundlePlistValue("CFBundleShortVersionString");
-  appBuild = readBundlePlistValue("CFBundleVersion");
-  appVersionKey = `${appVersion}+${appBuild}`;
-  appVersionSupported = Object.prototype.hasOwnProperty.call(SUPPORTED_APP_VERSIONS, appVersionKey);
-  appCompatibility = appVersionSupported ? `supported (${SUPPORTED_APP_VERSIONS[appVersionKey]})` : "unsupported";
+  context.metadata.version = readBundlePlistValue("CFBundleShortVersionString");
+  context.metadata.build = readBundlePlistValue("CFBundleVersion");
+  context.metadata.versionKey = `${context.metadata.version}+${context.metadata.build}`;
+  context.metadata.supported = Object.prototype.hasOwnProperty.call(SUPPORTED_APP_VERSIONS, context.metadata.versionKey);
+  context.metadata.compatibility = context.metadata.supported ? `supported (${SUPPORTED_APP_VERSIONS[context.metadata.versionKey]})` : "unsupported";
 }
 
 function cleanupTempWorkspace(): void {
-  if (tempRoot && existsSync(tempRoot)) {
-    rmSync(tempRoot, { recursive: true, force: true });
+  if (context.temp.root && existsSync(context.temp.root)) {
+    rmSync(context.temp.root, { recursive: true, force: true });
   }
-  tempRoot = "";
-  tempAppDir = "";
-  tempAssetsDir = "";
-  tempAsar = "";
+  context.temp.root = "";
+  context.temp.appDir = "";
+  context.temp.assetsDir = "";
+  context.temp.asar = "";
 }
 
 function createTempWorkspace(): boolean {
   cleanupTempWorkspace();
   try {
-    tempRoot = mkdtempSync(join(tmpdir(), "codexfast."));
-    tempAppDir = join(tempRoot, "app");
-    tempAssetsDir = join(tempAppDir, "webview", "assets");
-    tempAsar = join(tempRoot, "app.asar");
+    context.temp.root = mkdtempSync(join(tmpdir(), "codexfast."));
+    context.temp.appDir = join(context.temp.root, "app");
+    context.temp.assetsDir = join(context.temp.appDir, "webview", "assets");
+    context.temp.asar = join(context.temp.root, "app.asar");
     return true;
   } catch {
     printLine("Failed to create a temporary workspace.");
@@ -616,7 +597,7 @@ function createTempWorkspace(): boolean {
 }
 
 function runAsar(args: string[]): boolean {
-  const result = run(npmBin, ["exec", "--yes", "--package", asarPackage, "--", "asar", ...args]);
+  const result = run(context.toolchain.npm, ["exec", "--yes", "--package", asarPackage, "--", "asar", ...args]);
   if (result.status !== 0) {
     process.stdout.write(result.stdout);
     process.stderr.write(result.stderr);
@@ -626,12 +607,12 @@ function runAsar(args: string[]): boolean {
 }
 
 function readAsarIntegrityHash(): string {
-  const result = run(plistBuddyBin, ["-c", "Print :ElectronAsarIntegrity:Resources/app.asar:hash", appInfoPlist]);
+  const result = run(context.toolchain.plistBuddy, ["-c", "Print :ElectronAsarIntegrity:Resources/app.asar:hash", context.paths.infoPlist]);
   return result.status === 0 ? result.stdout.trim() : "";
 }
 
 function writeAsarIntegrityHash(hash: string, options: { failureMessage?: string; verificationFailureMessage?: string } = {}): boolean {
-  const setResult = run(plistBuddyBin, ["-c", `Set :ElectronAsarIntegrity:Resources/app.asar:hash ${hash}`, appInfoPlist]);
+  const setResult = run(context.toolchain.plistBuddy, ["-c", `Set :ElectronAsarIntegrity:Resources/app.asar:hash ${hash}`, context.paths.infoPlist]);
   if (setResult.status !== 0) {
     printLine(options.failureMessage ?? "Failed to update ElectronAsarIntegrity hash in Info.plist.");
     return false;
@@ -648,9 +629,9 @@ function readSparklePublicEdKey(): string {
 }
 
 function writeSparklePublicEdKey(value: string): boolean {
-  const setResult = run(plistBuddyBin, ["-c", `Set :SUPublicEDKey ${value}`, appInfoPlist]);
+  const setResult = run(context.toolchain.plistBuddy, ["-c", `Set :SUPublicEDKey ${value}`, context.paths.infoPlist]);
   if (setResult.status !== 0) {
-    const addResult = run(plistBuddyBin, ["-c", `Add :SUPublicEDKey string ${value}`, appInfoPlist]);
+    const addResult = run(context.toolchain.plistBuddy, ["-c", `Add :SUPublicEDKey string ${value}`, context.paths.infoPlist]);
     if (addResult.status !== 0) {
       return false;
     }
@@ -659,7 +640,7 @@ function writeSparklePublicEdKey(value: string): boolean {
 }
 
 function syncSparklePublicEdKeyForInAppUpdates(): MetadataChangeResult {
-  const targetKey = SPARKLE_PUBLIC_ED_KEY_BRIDGES[appVersionKey];
+  const targetKey = SPARKLE_PUBLIC_ED_KEY_BRIDGES[context.metadata.versionKey];
   if (!targetKey) {
     return { changed: false, ok: true };
   }
@@ -670,8 +651,8 @@ function syncSparklePublicEdKeyForInAppUpdates(): MetadataChangeResult {
   }
 
   try {
-    if (!existsSync(sparklePublicEdKeyBackup)) {
-      writeFileSync(sparklePublicEdKeyBackup, currentKey, "utf8");
+    if (!existsSync(context.paths.sparklePublicEdKeyBackup)) {
+      writeFileSync(context.paths.sparklePublicEdKeyBackup, currentKey, "utf8");
     }
   } catch {
     printLine("Failed to back up the Sparkle public EdDSA key.");
@@ -688,13 +669,13 @@ function syncSparklePublicEdKeyForInAppUpdates(): MetadataChangeResult {
 }
 
 function restoreSparklePublicEdKeyBackup(): MetadataChangeResult {
-  if (!existsSync(sparklePublicEdKeyBackup)) {
+  if (!existsSync(context.paths.sparklePublicEdKeyBackup)) {
     return { changed: false, ok: true };
   }
 
   let originalKey = "";
   try {
-    originalKey = readFileSync(sparklePublicEdKeyBackup, "utf8").trim();
+    originalKey = readFileSync(context.paths.sparklePublicEdKeyBackup, "utf8").trim();
   } catch {
     printLine("Failed to read the Sparkle public EdDSA key backup.");
     return { changed: false, ok: false };
@@ -706,7 +687,7 @@ function restoreSparklePublicEdKeyBackup(): MetadataChangeResult {
   }
 
   try {
-    rmSync(sparklePublicEdKeyBackup, { force: true });
+    rmSync(context.paths.sparklePublicEdKeyBackup, { force: true });
   } catch {
     printLine("Failed to remove the Sparkle public EdDSA key backup.");
     return { changed: true, ok: false };
@@ -716,7 +697,7 @@ function restoreSparklePublicEdKeyBackup(): MetadataChangeResult {
   return { changed: true, ok: true };
 }
 
-function calculateAsarHeaderHash(archivePath = appAsar): string | null {
+function calculateAsarHeaderHash(archivePath = context.paths.asar): string | null {
   try {
     const archive = readFileSync(archivePath);
     const headerStringSize = archive.readUInt32LE(12);
@@ -748,18 +729,18 @@ function updateAsarIntegrityMetadata(): boolean {
 }
 
 function createArchiveSnapshot(): ArchiveSnapshot | null {
-  if (!tempRoot && !createTempWorkspace()) {
+  if (!context.temp.root && !createTempWorkspace()) {
     return null;
   }
 
   const integrityHash = readAsarIntegrityHash();
-  if (!existsSync(appAsar)) {
+  if (!existsSync(context.paths.asar)) {
     return { archivePath: null, integrityHash };
   }
 
-  const archivePath = join(tempRoot, "previous.app.asar");
+  const archivePath = join(context.temp.root, "previous.app.asar");
   try {
-    copyFileSync(appAsar, archivePath);
+    copyFileSync(context.paths.asar, archivePath);
     return { archivePath, integrityHash };
   } catch {
     printLine("Failed to snapshot the current app.asar before replacing it.");
@@ -775,7 +756,7 @@ function restoreArchiveSnapshot(snapshot: ArchiveSnapshot): boolean {
   } else {
     printLine("Removing app.asar created during failed integrity update.");
     try {
-      rmSync(appAsar, { force: true });
+      rmSync(context.paths.asar, { force: true });
       archiveRestored = true;
     } catch {
       printLine("Failed to remove app.asar after integrity update failure.");
@@ -794,13 +775,13 @@ function restoreArchiveSnapshot(snapshot: ArchiveSnapshot): boolean {
 }
 
 function ensureArchiveBackup(): boolean {
-  if (existsSync(appAsarBackup)) {
-    printLine(`Archive backup already exists: ${appAsarBackup}`);
+  if (existsSync(context.paths.asarBackup)) {
+    printLine(`Archive backup already exists: ${context.paths.asarBackup}`);
     return true;
   }
   try {
-    writeFileSync(appAsarBackup, readFileSync(appAsar));
-    printLine(`Created archive backup: ${appAsarBackup}`);
+    writeFileSync(context.paths.asarBackup, readFileSync(context.paths.asar));
+    printLine(`Created archive backup: ${context.paths.asarBackup}`);
     return true;
   } catch {
     printLine("Failed to create app.asar backup.");
@@ -812,23 +793,23 @@ function unpackAppAsarToTemp(): boolean {
   if (!createTempWorkspace()) {
     return false;
   }
-  if (!runAsar(["e", appAsar, tempAppDir])) {
+  if (!runAsar(["e", context.paths.asar, context.temp.appDir])) {
     printLine("Failed to unpack app.asar.");
     return false;
   }
-  if (!existsSync(tempAssetsDir)) {
-    printLine(`Assets directory not found: ${tempAssetsDir}`);
+  if (!existsSync(context.temp.assetsDir)) {
+    printLine(`Assets directory not found: ${context.temp.assetsDir}`);
     return false;
   }
   return true;
 }
 
 function packTempAppToAsar(): boolean {
-  if (!tempAsar) {
+  if (!context.temp.asar) {
     printLine("Temporary archive path is not available.");
     return false;
   }
-  if (!runAsar(["p", tempAppDir, tempAsar])) {
+  if (!runAsar(["p", context.temp.appDir, context.temp.asar])) {
     printLine("Failed to repack app.asar.");
     return false;
   }
@@ -836,11 +817,11 @@ function packTempAppToAsar(): boolean {
 }
 
 function replaceAppAsarFrom(sourceArchive: string, failureMessage: string): boolean {
-  const targetTempAsar = join(appResources, `.codexfast.${process.pid}.${randomBytes(6).toString("hex")}.app.asar.tmp`);
+  const targetTempAsar = join(context.paths.resources, `.codexfast.${process.pid}.${randomBytes(6).toString("hex")}.app.asar.tmp`);
   try {
     rmSync(targetTempAsar, { force: true });
     copyFileSync(sourceArchive, targetTempAsar);
-    renameSync(targetTempAsar, appAsar);
+    renameSync(targetTempAsar, context.paths.asar);
     return true;
   } catch {
     rmSync(targetTempAsar, { force: true });
@@ -863,15 +844,15 @@ function commitArchiveWithIntegrity(sourceArchive: string, snapshot: ArchiveSnap
 }
 
 function cleanupStaleArchiveTempFiles(): void {
-  if (!existsSync(appResources)) {
+  if (!existsSync(context.paths.resources)) {
     return;
   }
   const staleBeforeMs = Date.now() - staleArchiveTempFileMs;
-  for (const entry of readdirSync(appResources)) {
+  for (const entry of readdirSync(context.paths.resources)) {
     if (!entry.startsWith(".codexfast.") || !entry.endsWith(".app.asar.tmp")) {
       continue;
     }
-    const tempFile = join(appResources, entry);
+    const tempFile = join(context.paths.resources, entry);
     try {
       if (statSync(tempFile).mtimeMs < staleBeforeMs) {
         rmSync(tempFile, { force: true });
@@ -883,7 +864,7 @@ function cleanupStaleArchiveTempFiles(): void {
 }
 
 function migrateLegacyUnpackedLayout(): boolean {
-  const unpackedAppDir = join(appResources, "app");
+  const unpackedAppDir = join(context.paths.resources, "app");
   if (!existsSync(unpackedAppDir)) {
     return true;
   }
@@ -893,7 +874,7 @@ function migrateLegacyUnpackedLayout(): boolean {
     return false;
   }
   try {
-    if (!existsSync(appAsarBackup) && existsSync(appAsar)) {
+    if (!existsSync(context.paths.asarBackup) && existsSync(context.paths.asar)) {
       if (!ensureArchiveBackup()) {
         return false;
       }
@@ -904,12 +885,12 @@ function migrateLegacyUnpackedLayout(): boolean {
       return false;
     }
 
-    if (!runAsar(["p", unpackedAppDir, tempAsar])) {
+    if (!runAsar(["p", unpackedAppDir, context.temp.asar])) {
       printLine("Failed to repack legacy Resources/app directory.");
       return false;
     }
 
-    if (!commitArchiveWithIntegrity(tempAsar, snapshot)) {
+    if (!commitArchiveWithIntegrity(context.temp.asar, snapshot)) {
       return false;
     }
     rmSync(unpackedAppDir, { recursive: true, force: true });
@@ -920,7 +901,7 @@ function migrateLegacyUnpackedLayout(): boolean {
 }
 
 function restoreFromArchiveBackup(): boolean {
-  if (!existsSync(appAsarBackup)) {
+  if (!existsSync(context.paths.asarBackup)) {
     return false;
   }
 
@@ -932,8 +913,8 @@ function restoreFromArchiveBackup(): boolean {
     if (!snapshot) {
       return false;
     }
-    printLine(`Restoring app.asar from archive backup: ${appAsarBackup}`);
-    if (!commitArchiveWithIntegrity(appAsarBackup, snapshot)) {
+    printLine(`Restoring app.asar from archive backup: ${context.paths.asarBackup}`);
+    if (!commitArchiveWithIntegrity(context.paths.asarBackup, snapshot)) {
       return false;
     }
     const metadataChange = restoreSparklePublicEdKeyBackup();
@@ -951,16 +932,16 @@ function restoreFromArchiveBackup(): boolean {
 
 function printManualResignGuidance(): void {
   printLine("Manual fallback:");
-  printLine(`  codesign --force --deep --sign - ${appBundle}`);
-  printLine(`  codesign --verify --deep --strict --verbose=2 ${appBundle}`);
+  printLine(`  codesign --force --deep --sign - ${context.paths.bundle}`);
+  printLine(`  codesign --verify --deep --strict --verbose=2 ${context.paths.bundle}`);
   printLine("If verification still fails, run Restore original app or reinstall Codex.app.");
 }
 
 function officialCodexDownloadUrl(): string | null {
-  if (!appVersion || appVersion === "unknown") {
+  if (!context.metadata.version || context.metadata.version === "unknown") {
     return null;
   }
-  return `https://persistent.oaistatic.com/codex-app-prod/Codex-darwin-arm64-${appVersion}.zip`;
+  return `https://persistent.oaistatic.com/codex-app-prod/Codex-darwin-arm64-${context.metadata.version}.zip`;
 }
 
 function printOfficialReinstallGuidanceAfterRestore(): void {
@@ -979,7 +960,7 @@ function printOfficialReinstallGuidanceAfterRestore(): void {
 function resignAppBundle(reason: string): boolean {
   printLine(reason);
   printLine("Running local ad-hoc re-sign...");
-  const result = run(codesignBin, ["--force", "--deep", "--sign", "-", appBundle]);
+  const result = run(context.toolchain.codesign, ["--force", "--deep", "--sign", "-", context.paths.bundle]);
   if (result.status !== 0) {
     process.stdout.write(result.stdout);
     process.stderr.write(result.stderr);
@@ -988,7 +969,7 @@ function resignAppBundle(reason: string): boolean {
     return false;
   }
 
-  const verifyResult = run(codesignBin, ["--verify", "--deep", "--strict", "--verbose=2", appBundle]);
+  const verifyResult = run(context.toolchain.codesign, ["--verify", "--deep", "--strict", "--verbose=2", context.paths.bundle]);
   if (verifyResult.status !== 0) {
     process.stdout.write(verifyResult.stdout);
     process.stderr.write(verifyResult.stderr);
@@ -1002,16 +983,16 @@ function resignAppBundle(reason: string): boolean {
 }
 
 function checkRequirements(options: { command?: string } = {}): boolean {
-  if (!existsSync(appResources)) {
-    printLine(`Codex resources directory not found: ${appResources}`);
-    printLine(`Make sure Codex.app is installed at ${appBundle}.`);
+  if (!existsSync(context.paths.resources)) {
+    printLine(`Codex resources directory not found: ${context.paths.resources}`);
+    printLine(`Make sure Codex.app is installed at ${context.paths.bundle}.`);
     return false;
   }
 
-  nodeBin = process.execPath;
-  plistBuddyBin = resolvePlistBuddy() ?? "";
+  context.toolchain.node = process.execPath;
+  context.toolchain.plistBuddy = resolvePlistBuddy() ?? "";
 
-  if (!plistBuddyBin) {
+  if (!context.toolchain.plistBuddy) {
     printLine("PlistBuddy not found.");
     printLine("This macOS environment cannot update ElectronAsarIntegrity in Info.plist.");
     return false;
@@ -1021,25 +1002,25 @@ function checkRequirements(options: { command?: string } = {}): boolean {
 
   loadAppCompatibilityMetadata();
 
-  if ((options.command === "repair" && !appVersionSupported) || options.command === "launch") {
+  if ((options.command === "repair" && !context.metadata.supported) || options.command === "launch") {
     return true;
   }
 
-  npmBin = resolveCommand("npm") ?? "";
-  npxBin = resolveCommand("npx") ?? "";
-  codesignBin = resolveCommand("codesign") ?? "";
+  context.toolchain.npm = resolveCommand("npm") ?? "";
+  context.toolchain.npx = resolveCommand("npx") ?? "";
+  context.toolchain.codesign = resolveCommand("codesign") ?? "";
 
-  if (!npmBin) {
+  if (!context.toolchain.npm) {
     printLine("npm not found.");
     printLine("Make sure npm is available in your shell.");
     return false;
   }
-  if (options.command === "install-watcher" && !npxBin) {
+  if (options.command === "install-watcher" && !context.toolchain.npx) {
     printLine("npx not found.");
     printLine("Make sure npx is available in your shell.");
     return false;
   }
-  if (!codesignBin) {
+  if (!context.toolchain.codesign) {
     printLine("codesign not found.");
     printLine("This macOS environment cannot perform local re-signing.");
     return false;
@@ -1051,16 +1032,16 @@ function checkRequirements(options: { command?: string } = {}): boolean {
 function printActionHeader(action: string): void {
   printLine("");
   printLine(`Action: ${action}`);
-  printLine(`Resources: ${appResources}`);
-  printLine(`Detected version: ${appVersion}`);
-  printLine(`Detected build: ${appBuild}`);
-  printLine(`Compatibility: ${appCompatibility}`);
+  printLine(`Resources: ${context.paths.resources}`);
+  printLine(`Detected version: ${context.metadata.version}`);
+  printLine(`Detected build: ${context.metadata.build}`);
+  printLine(`Compatibility: ${context.metadata.compatibility}`);
   printLine("Mode: self-contained single file");
   printLine("");
 }
 
 function validateActionRequest(action: string): boolean {
-  if ((action === "apply" || action === "repair") && !appVersionSupported) {
+  if ((action === "apply" || action === "repair") && !context.metadata.supported) {
     if (action === "repair") {
       printLine("Repair skipped because this Codex.app build is unsupported.");
       printLine("No app files were modified.");
@@ -1130,7 +1111,7 @@ function parseApplySummary(output: string): ApplySummary | null {
 
 function runEmbeddedPatcher(action: string): PatcherRun {
   const patcherAction = action === "repair" ? "apply" : action;
-  const result = run(nodeBin, ["-", patcherAction, tempAssetsDir, backupSuffix, legacyBackupSuffix, appVersionKey], {
+  const result = run(context.toolchain.node, ["-", patcherAction, context.temp.assetsDir, backupSuffix, legacyBackupSuffix, context.metadata.versionKey], {
     input: __PATCHER_SOURCE__,
   });
   process.stdout.write(result.stdout);
@@ -1149,7 +1130,7 @@ function finalizeModifiedArchive(action: string): boolean {
   if (!packTempAppToAsar()) {
     return false;
   }
-  if (!commitArchiveWithIntegrity(tempAsar, snapshot)) {
+  if (!commitArchiveWithIntegrity(context.temp.asar, snapshot)) {
     return false;
   }
   if (action === "apply" || action === "repair") {
@@ -1180,12 +1161,12 @@ function runEmbeddedTool(action: string): number {
   if (!migrateLegacyUnpackedLayout()) {
     return 1;
   }
-  if (!existsSync(appAsar)) {
-    printLine(`app.asar not found: ${appAsar}`);
+  if (!existsSync(context.paths.asar)) {
+    printLine(`app.asar not found: ${context.paths.asar}`);
     return 1;
   }
 
-  if (action === "restore" && existsSync(appAsarBackup)) {
+  if (action === "restore" && existsSync(context.paths.asarBackup)) {
     exitCode = restoreFromArchiveBackup() ? 0 : 1;
     if (exitCode === 0) {
       printOfficialReinstallGuidanceAfterRestore();
@@ -1265,7 +1246,7 @@ function randomDebugPort(): number {
 }
 
 function codexExecutablePath(): string {
-  return join(appBundle, "Contents", "MacOS", "Codex");
+  return join(context.paths.bundle, "Contents", "MacOS", "Codex");
 }
 
 function launchCodexProcess(debugPort: number): ChildProcess {
@@ -1844,7 +1825,7 @@ function waitForRuntimeLaunchProcessExit(child: ChildProcess): Promise<number> {
 async function runRuntimeLaunch(): Promise<number> {
   printActionHeader("launch");
 
-  if (!appVersionSupported) {
+  if (!context.metadata.supported) {
     printLine("Runtime launch is blocked for this Codex.app version.");
     printLine(`Supported versions: ${supportedAppVersionKeys}`);
     printLine("");
@@ -1930,7 +1911,7 @@ function watcherRunnerSource(): string {
   return `#!/usr/bin/env node
 const { spawnSync } = require("node:child_process");
 
-const result = spawnSync(${JSON.stringify(npxBin)}, ["--yes", "codexfast@latest", "repair"], {
+const result = spawnSync(${JSON.stringify(context.toolchain.npx)}, ["--yes", "codexfast@latest", "repair"], {
   stdio: "inherit",
   env: process.env,
 });
@@ -1944,10 +1925,10 @@ process.exit(result.status ?? 1);
 }
 
 function writeWatcherRunner(): boolean {
-  if (!npxBin) {
-    npxBin = resolveCommand("npx") ?? "";
+  if (!context.toolchain.npx) {
+    context.toolchain.npx = resolveCommand("npx") ?? "";
   }
-  if (!npxBin) {
+  if (!context.toolchain.npx) {
     printLine("npx not found.");
     printLine("Make sure npx is available in your shell.");
     return false;
@@ -1965,7 +1946,7 @@ function writeWatcherRunner(): boolean {
 
 function watcherPlist(): string {
   const environmentEntries = [
-    ["CODEXFAST_APP_BUNDLE", appBundle],
+    ["CODEXFAST_APP_BUNDLE", context.paths.bundle],
     ["PATH", process.env.PATH ?? "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"],
   ];
   const environmentXml = environmentEntries
@@ -1989,7 +1970,7 @@ ${environmentXml}
   </dict>
   <key>WatchPaths</key>
   <array>
-    <string>${escapeXml(appAsar)}</string>
+    <string>${escapeXml(context.paths.asar)}</string>
   </array>
   <key>RunAtLoad</key>
   <true/>
@@ -2021,8 +2002,8 @@ function runLaunchctl(args: string[], options: { quiet?: boolean } = {}): boolea
 
 function installWatcher(): number {
   printActionHeader("install-watcher");
-  if (!existsSync(appAsar)) {
-    printLine(`app.asar not found: ${appAsar}`);
+  if (!existsSync(context.paths.asar)) {
+    printLine(`app.asar not found: ${context.paths.asar}`);
     printLine("");
     printLine("Exit code: 1");
     return 1;

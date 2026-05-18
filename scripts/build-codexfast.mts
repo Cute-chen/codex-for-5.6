@@ -39,9 +39,12 @@ const patcherSource = ts.transpileModule(`"use strict";\n\n${patcherTargetsSourc
   compilerOptions,
 }).outputText;
 const packageVersion = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8")).version as string;
-const cliModuleSource = inlineCliModuleSource(readFileSync(join(sourceDir, "cli-utils.mts"), "utf8"));
+const cliModuleSource = [
+  "cli-context.mts",
+  "cli-utils.mts",
+].map((fileName) => inlineCliModuleSource(readFileSync(join(sourceDir, fileName), "utf8"))).join("\n");
 const cliSource = insertAfterImports(
-  readFileSync(join(sourceDir, "cli.mts"), "utf8").replace(/^import [^\n]+ from "\.\/cli-utils\.mts";\r?\n/m, ""),
+  readFileSync(join(sourceDir, "cli.mts"), "utf8").replace(/^import [^\n]+ from "\.\/cli-(?:context|utils)\.mts";\r?\n/gm, ""),
   cliModuleSource,
 )
   .replace(
