@@ -41,11 +41,12 @@ const patcherSource = ts.transpileModule(`"use strict";\n\n${patcherTargetsSourc
 const packageVersion = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8")).version as string;
 const cliModuleSource = [
   "cli-asar-transaction.mts",
+  "cli-cdp.mts",
   "cli-context.mts",
   "cli-utils.mts",
 ].map((fileName) => inlineCliModuleSource(readFileSync(join(sourceDir, fileName), "utf8"))).join("\n");
 const cliSource = insertAfterImports(
-  readFileSync(join(sourceDir, "cli.mts"), "utf8").replace(/^import [^\n]+ from "\.\/cli-(?:asar-transaction|context|utils)\.mts";\r?\n/gm, ""),
+  readFileSync(join(sourceDir, "cli.mts"), "utf8").replace(/^import [^\n]+ from "\.\/cli-(?:asar-transaction|cdp|context|utils)\.mts";\r?\n/gm, ""),
   cliModuleSource,
 )
   .replace(
