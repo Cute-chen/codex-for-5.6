@@ -40,7 +40,7 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
     ]);
     return result.status === 0 ? result.stdout.trim() : fallback;
   }
-  
+
   function cleanupTempWorkspace(): void {
     if (context.temp.root && existsSync(context.temp.root)) {
       rmSync(context.temp.root, { recursive: true, force: true });
@@ -50,7 +50,7 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
     context.temp.assetsDir = '';
     context.temp.asar = '';
   }
-  
+
   function createTempWorkspace(): boolean {
     cleanupTempWorkspace();
     try {
@@ -64,7 +64,7 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
       return false;
     }
   }
-  
+
   function runAsar(args: string[]): boolean {
     const result = run(context.toolchain.npm, [
       'exec',
@@ -82,7 +82,7 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
     }
     return true;
   }
-  
+
   function readAsarIntegrityHash(): string {
     const result = run(context.toolchain.plistBuddy, [
       '-c',
@@ -91,7 +91,7 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
     ]);
     return result.status === 0 ? result.stdout.trim() : '';
   }
-  
+
   function writeAsarIntegrityHash(
     hash: string,
     options: {
@@ -120,11 +120,11 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
     }
     return true;
   }
-  
+
   function readSparklePublicEdKey(): string {
     return readBundlePlistValue('SUPublicEDKey', '');
   }
-  
+
   function writeSparklePublicEdKey(value: string): boolean {
     const setResult = run(context.toolchain.plistBuddy, [
       '-c',
@@ -143,18 +143,18 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
     }
     return readSparklePublicEdKey() === value;
   }
-  
+
   function syncSparklePublicEdKeyForInAppUpdates(): MetadataChangeResult {
     const targetKey = sparklePublicEdKeyBridges[context.metadata.versionKey];
     if (!targetKey) {
       return { changed: false, ok: true };
     }
-  
+
     const currentKey = readSparklePublicEdKey();
     if (currentKey === targetKey) {
       return { changed: false, ok: true };
     }
-  
+
     try {
       if (!existsSync(context.paths.sparklePublicEdKeyBackup)) {
         writeFileSync(context.paths.sparklePublicEdKeyBackup, currentKey, 'utf8');
@@ -163,23 +163,23 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
       printLine('Failed to back up the Sparkle public EdDSA key.');
       return { changed: false, ok: false };
     }
-  
+
     if (!writeSparklePublicEdKey(targetKey)) {
       printLine(
         'Failed to update the Sparkle public EdDSA key for in-app updates.',
       );
       return { changed: false, ok: false };
     }
-  
+
     printLine('Updated Sparkle public EdDSA key for in-app updates.');
     return { changed: true, ok: true };
   }
-  
+
   function restoreSparklePublicEdKeyBackup(): MetadataChangeResult {
     if (!existsSync(context.paths.sparklePublicEdKeyBackup)) {
       return { changed: false, ok: true };
     }
-  
+
     let originalKey = '';
     try {
       originalKey = readFileSync(
@@ -190,23 +190,23 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
       printLine('Failed to read the Sparkle public EdDSA key backup.');
       return { changed: false, ok: false };
     }
-  
+
     if (!writeSparklePublicEdKey(originalKey)) {
       printLine('Failed to restore the Sparkle public EdDSA key backup.');
       return { changed: false, ok: false };
     }
-  
+
     try {
       rmSync(context.paths.sparklePublicEdKeyBackup, { force: true });
     } catch {
       printLine('Failed to remove the Sparkle public EdDSA key backup.');
       return { changed: true, ok: false };
     }
-  
+
     printLine('Restored Sparkle public EdDSA key backup.');
     return { changed: true, ok: true };
   }
-  
+
   function updateAsarIntegrityMetadata(): boolean {
     const currentHash = calculateAsarHeaderHash(context.paths.asar);
     if (!currentHash) {
@@ -215,27 +215,27 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
       );
       return false;
     }
-  
+
     if (!readAsarIntegrityHash()) {
       printLine(
         'ElectronAsarIntegrity entry not found in Info.plist. Skipping metadata update.',
       );
       return true;
     }
-  
+
     if (!writeAsarIntegrityHash(currentHash)) {
       return false;
     }
-  
+
     printLine('Updated ElectronAsarIntegrity hash in Info.plist.');
     return true;
   }
-  
+
   function createArchiveSnapshot(): ArchiveSnapshot | null {
     if (!context.temp.root && !createTempWorkspace()) {
       return null;
     }
-  
+
     const snapshot = snapshotArchive(
       context.temp.root,
       context.paths.asar,
@@ -247,7 +247,7 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
     }
     return snapshot;
   }
-  
+
   function restoreArchiveSnapshot(snapshot: ArchiveSnapshot): boolean {
     let archiveRestored = false;
     if (snapshot.archivePath) {
@@ -267,7 +267,7 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
         printLine('Failed to remove app.asar after integrity update failure.');
       }
     }
-  
+
     let integrityRestored = true;
     if (
       snapshot.integrityHash &&
@@ -280,10 +280,10 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
           'ElectronAsarIntegrity hash verification failed after restoring previous Info.plist hash.',
       });
     }
-  
+
     return archiveRestored && integrityRestored;
   }
-  
+
   function ensureArchiveBackup(): boolean {
     if (existsSync(context.paths.asarBackup)) {
       printLine(`Archive backup already exists: ${context.paths.asarBackup}`);
@@ -298,7 +298,7 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
       return false;
     }
   }
-  
+
   function unpackAppAsarToTemp(): boolean {
     if (!createTempWorkspace()) {
       return false;
@@ -313,7 +313,7 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
     }
     return true;
   }
-  
+
   function packTempAppToAsar(): boolean {
     if (!context.temp.asar) {
       printLine('Temporary archive path is not available.');
@@ -325,7 +325,7 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
     }
     return true;
   }
-  
+
   function replaceAppAsarFrom(
     sourceArchive: string,
     failureMessage: string,
@@ -344,7 +344,7 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
     printLine(failureMessage);
     return false;
   }
-  
+
   function commitArchiveWithIntegrity(
     sourceArchive: string,
     snapshot: ArchiveSnapshot,
@@ -367,20 +367,20 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
     }
     return false;
   }
-  
+
   function cleanupStaleArchiveTempFiles(): void {
     removeStaleArchiveTempFiles(
       context.paths.resources,
       Date.now() - staleArchiveTempFileMs,
     );
   }
-  
+
   function migrateLegacyUnpackedLayout(): boolean {
     const unpackedAppDir = join(context.paths.resources, 'app');
     if (!existsSync(unpackedAppDir)) {
       return true;
     }
-  
+
     printLine(
       'Detected legacy unpacked Resources/app layout. Repacking into app.asar.',
     );
@@ -396,17 +396,17 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
           return false;
         }
       }
-  
+
       const snapshot = createArchiveSnapshot();
       if (!snapshot) {
         return false;
       }
-  
+
       if (!runAsar(['p', unpackedAppDir, context.temp.asar])) {
         printLine('Failed to repack legacy Resources/app directory.');
         return false;
       }
-  
+
       if (!commitArchiveWithIntegrity(context.temp.asar, snapshot)) {
         return false;
       }
@@ -418,12 +418,12 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
       cleanupTempWorkspace();
     }
   }
-  
+
   function restoreFromArchiveBackup(): boolean {
     if (!existsSync(context.paths.asarBackup)) {
       return false;
     }
-  
+
     if (!createTempWorkspace()) {
       return false;
     }
@@ -450,7 +450,7 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
       cleanupTempWorkspace();
     }
   }
-  
+
   function printManualResignGuidance(): void {
     printLine('Manual fallback:');
     printLine(`  codesign --force --deep --sign - ${context.paths.bundle}`);
@@ -461,14 +461,14 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
       'If verification still fails, run Restore original app or reinstall Codex.app.',
     );
   }
-  
+
   function officialCodexDownloadUrl(): string | null {
     if (!context.metadata.version || context.metadata.version === 'unknown') {
       return null;
     }
     return `https://persistent.oaistatic.com/codex-app-prod/Codex-darwin-arm64-${context.metadata.version}.zip`;
   }
-  
+
   function printOfficialReinstallGuidanceAfterRestore(): void {
     printLine('');
     printLine('Official signature recovery:');
@@ -487,7 +487,7 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
       );
     }
   }
-  
+
   function resignAppBundle(reason: string): boolean {
     printLine(reason);
     printLine('Running local ad-hoc re-sign...');
@@ -505,7 +505,7 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
       printManualResignGuidance();
       return false;
     }
-  
+
     const verifyResult = run(context.toolchain.codesign, [
       '--verify',
       '--deep',
@@ -520,12 +520,12 @@ export function createLegacyAppMutations(options: LegacyAppMutationOptions) {
       printManualResignGuidance();
       return false;
     }
-  
+
     printLine('Re-sign completed.');
     return true;
   }
-  
-  
+
+
 
   return {
     cleanupStaleArchiveTempFiles,
