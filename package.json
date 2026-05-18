@@ -5,6 +5,7 @@
   "scripts": {
     "build": "tsx scripts/build-codexfast.mts",
     "build:check": "tsx scripts/build-codexfast.mts --check",
+    "inspect:bundle-targets": "tsx scripts/inspect-bundle-targets.mts",
     "test": "pnpm build:check && bash test/re-sign-flow.sh",
     "typecheck": "tsc --noEmit",
     "prepack": "pnpm build:check"
