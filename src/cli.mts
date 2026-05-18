@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import * as http from "node:http";
 import * as https from "node:https";
 import * as net from "node:net";
@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { spawn, type ChildProcess } from "node:child_process";
+import { calculateAsarHeaderHash, removeStaleArchiveTempFiles, replaceArchiveAtomically, snapshotArchive, type ArchiveSnapshot } from "./cli-asar-transaction.mts";
 import { createCodexfastContext, emptyTempWorkspace } from "./cli-context.mts";
 import { asError, debugRuntime, escapeXml, printLine, resolveCommand, resolvePlistBuddy, run, sleep } from "./cli-utils.mts";
 
@@ -26,11 +27,6 @@ const launchAgentLabel = "com.codexfast.watcher";
 const launchAgentFileName = `${launchAgentLabel}.plist`;
 const SPARKLE_PUBLIC_ED_KEY_BRIDGES: Record<string, string> = {
   "26.506.31421+2620": "mNfr1v9t63BfgDtlw4C8lRvSY6uMggIXABDOCi3tS6k=",
-};
-
-type ArchiveSnapshot = {
-  archivePath: string | null;
-  integrityHash: string;
 };
 
 type PatcherRun = {
@@ -697,19 +693,8 @@ function restoreSparklePublicEdKeyBackup(): MetadataChangeResult {
   return { changed: true, ok: true };
 }
 
-function calculateAsarHeaderHash(archivePath = context.paths.asar): string | null {
-  try {
-    const archive = readFileSync(archivePath);
-    const headerStringSize = archive.readUInt32LE(12);
-    const headerString = archive.subarray(16, 16 + headerStringSize).toString("utf8");
-    return createHash("sha256").update(headerString).digest("hex");
-  } catch {
-    return null;
-  }
-}
-
 function updateAsarIntegrityMetadata(): boolean {
-  const currentHash = calculateAsarHeaderHash();
+  const currentHash = calculateAsarHeaderHash(context.paths.asar);
   if (!currentHash) {
     printLine("Failed to calculate the Electron ASAR header hash for app.asar.");
     return false;
@@ -733,19 +718,12 @@ function createArchiveSnapshot(): ArchiveSnapshot | null {
     return null;
   }
 
-  const integrityHash = readAsarIntegrityHash();
-  if (!existsSync(context.paths.asar)) {
-    return { archivePath: null, integrityHash };
-  }
-
-  const archivePath = join(context.temp.root, "previous.app.asar");
-  try {
-    copyFileSync(context.paths.asar, archivePath);
-    return { archivePath, integrityHash };
-  } catch {
+  const snapshot = snapshotArchive(context.temp.root, context.paths.asar, readAsarIntegrityHash());
+  if (!snapshot) {
     printLine("Failed to snapshot the current app.asar before replacing it.");
     return null;
   }
+  return snapshot;
 }
 
 function restoreArchiveSnapshot(snapshot: ArchiveSnapshot): boolean {
@@ -817,17 +795,12 @@ function packTempAppToAsar(): boolean {
 }
 
 function replaceAppAsarFrom(sourceArchive: string, failureMessage: string): boolean {
-  const targetTempAsar = join(context.paths.resources, `.codexfast.${process.pid}.${randomBytes(6).toString("hex")}.app.asar.tmp`);
-  try {
-    rmSync(targetTempAsar, { force: true });
-    copyFileSync(sourceArchive, targetTempAsar);
-    renameSync(targetTempAsar, context.paths.asar);
+  const tempFileName = `.codexfast.${process.pid}.${randomBytes(6).toString("hex")}.app.asar.tmp`;
+  if (replaceArchiveAtomically(sourceArchive, context.paths.asar, context.paths.resources, tempFileName)) {
     return true;
-  } catch {
-    rmSync(targetTempAsar, { force: true });
-    printLine(failureMessage);
-    return false;
   }
+  printLine(failureMessage);
+  return false;
 }
 
 function commitArchiveWithIntegrity(sourceArchive: string, snapshot: ArchiveSnapshot): boolean {
@@ -844,23 +817,7 @@ function commitArchiveWithIntegrity(sourceArchive: string, snapshot: ArchiveSnap
 }
 
 function cleanupStaleArchiveTempFiles(): void {
-  if (!existsSync(context.paths.resources)) {
-    return;
-  }
-  const staleBeforeMs = Date.now() - staleArchiveTempFileMs;
-  for (const entry of readdirSync(context.paths.resources)) {
-    if (!entry.startsWith(".codexfast.") || !entry.endsWith(".app.asar.tmp")) {
-      continue;
-    }
-    const tempFile = join(context.paths.resources, entry);
-    try {
-      if (statSync(tempFile).mtimeMs < staleBeforeMs) {
-        rmSync(tempFile, { force: true });
-      }
-    } catch {
-      rmSync(tempFile, { force: true });
-    }
-  }
+  removeStaleArchiveTempFiles(context.paths.resources, Date.now() - staleArchiveTempFileMs);
 }
 
 function migrateLegacyUnpackedLayout(): boolean {

@@ -62,6 +62,62 @@ const node_path_1 = require("node:path");
 const promises_1 = require("node:readline/promises");
 const node_process_1 = require("node:process");
 const node_child_process_1 = require("node:child_process");
+function calculateAsarHeaderHash(archivePath) {
+    try {
+        const archive = (0, node_fs_1.readFileSync)(archivePath);
+        const headerStringSize = archive.readUInt32LE(12);
+        const headerString = archive.subarray(16, 16 + headerStringSize).toString("utf8");
+        return (0, node_crypto_1.createHash)("sha256").update(headerString).digest("hex");
+    }
+    catch {
+        return null;
+    }
+}
+function snapshotArchive(tempRoot, archivePath, integrityHash) {
+    if (!(0, node_fs_1.existsSync)(archivePath)) {
+        return { archivePath: null, integrityHash };
+    }
+    const snapshotPath = (0, node_path_1.join)(tempRoot, "previous.app.asar");
+    try {
+        copyFileSync(archivePath, snapshotPath);
+        return { archivePath: snapshotPath, integrityHash };
+    }
+    catch {
+        return null;
+    }
+}
+function replaceArchiveAtomically(sourceArchive, targetArchive, resourcesDir, tempFileName) {
+    const targetTempAsar = (0, node_path_1.join)(resourcesDir, tempFileName);
+    try {
+        (0, node_fs_1.rmSync)(targetTempAsar, { force: true });
+        copyFileSync(sourceArchive, targetTempAsar);
+        renameSync(targetTempAsar, targetArchive);
+        return true;
+    }
+    catch {
+        (0, node_fs_1.rmSync)(targetTempAsar, { force: true });
+        return false;
+    }
+}
+function removeStaleArchiveTempFiles(resourcesDir, staleBeforeMs) {
+    if (!(0, node_fs_1.existsSync)(resourcesDir)) {
+        return;
+    }
+    for (const entry of readdirSync(resourcesDir)) {
+        if (!entry.startsWith(".codexfast.") || !entry.endsWith(".app.asar.tmp")) {
+            continue;
+        }
+        const tempFile = (0, node_path_1.join)(resourcesDir, entry);
+        try {
+            if (statSync(tempFile).mtimeMs < staleBeforeMs) {
+                (0, node_fs_1.rmSync)(tempFile, { force: true });
+            }
+        }
+        catch {
+            (0, node_fs_1.rmSync)(tempFile, { force: true });
+        }
+    }
+}
 function createAppPaths(appBundle = "/Applications/Codex.app") {
     const resources = (0, node_path_1.join)(appBundle, "Contents", "Resources");
     return {
@@ -710,19 +766,8 @@ function restoreSparklePublicEdKeyBackup() {
     printLine("Restored Sparkle public EdDSA key backup.");
     return { changed: true, ok: true };
 }
-function calculateAsarHeaderHash(archivePath = context.paths.asar) {
-    try {
-        const archive = (0, node_fs_1.readFileSync)(archivePath);
-        const headerStringSize = archive.readUInt32LE(12);
-        const headerString = archive.subarray(16, 16 + headerStringSize).toString("utf8");
-        return (0, node_crypto_1.createHash)("sha256").update(headerString).digest("hex");
-    }
-    catch {
-        return null;
-    }
-}
 function updateAsarIntegrityMetadata() {
-    const currentHash = calculateAsarHeaderHash();
+    const currentHash = calculateAsarHeaderHash(context.paths.asar);
     if (!currentHash) {
         printLine("Failed to calculate the Electron ASAR header hash for app.asar.");
         return false;
@@ -741,19 +786,12 @@ function createArchiveSnapshot() {
     if (!context.temp.root && !createTempWorkspace()) {
         return null;
     }
-    const integrityHash = readAsarIntegrityHash();
-    if (!(0, node_fs_1.existsSync)(context.paths.asar)) {
-        return { archivePath: null, integrityHash };
-    }
-    const archivePath = (0, node_path_1.join)(context.temp.root, "previous.app.asar");
-    try {
-        (0, node_fs_1.copyFileSync)(context.paths.asar, archivePath);
-        return { archivePath, integrityHash };
-    }
-    catch {
+    const snapshot = snapshotArchive(context.temp.root, context.paths.asar, readAsarIntegrityHash());
+    if (!snapshot) {
         printLine("Failed to snapshot the current app.asar before replacing it.");
         return null;
     }
+    return snapshot;
 }
 function restoreArchiveSnapshot(snapshot) {
     let archiveRestored = false;
@@ -821,18 +859,12 @@ function packTempAppToAsar() {
     return true;
 }
 function replaceAppAsarFrom(sourceArchive, failureMessage) {
-    const targetTempAsar = (0, node_path_1.join)(context.paths.resources, `.codexfast.${process.pid}.${(0, node_crypto_1.randomBytes)(6).toString("hex")}.app.asar.tmp`);
-    try {
-        (0, node_fs_1.rmSync)(targetTempAsar, { force: true });
-        (0, node_fs_1.copyFileSync)(sourceArchive, targetTempAsar);
-        (0, node_fs_1.renameSync)(targetTempAsar, context.paths.asar);
+    const tempFileName = `.codexfast.${process.pid}.${(0, node_crypto_1.randomBytes)(6).toString("hex")}.app.asar.tmp`;
+    if (replaceArchiveAtomically(sourceArchive, context.paths.asar, context.paths.resources, tempFileName)) {
         return true;
     }
-    catch {
-        (0, node_fs_1.rmSync)(targetTempAsar, { force: true });
-        printLine(failureMessage);
-        return false;
-    }
+    printLine(failureMessage);
+    return false;
 }
 function commitArchiveWithIntegrity(sourceArchive, snapshot) {
     if (!replaceAppAsarFrom(sourceArchive, "Failed to replace app.asar with the repacked archive.")) {
@@ -847,24 +879,7 @@ function commitArchiveWithIntegrity(sourceArchive, snapshot) {
     return false;
 }
 function cleanupStaleArchiveTempFiles() {
-    if (!(0, node_fs_1.existsSync)(context.paths.resources)) {
-        return;
-    }
-    const staleBeforeMs = Date.now() - staleArchiveTempFileMs;
-    for (const entry of (0, node_fs_1.readdirSync)(context.paths.resources)) {
-        if (!entry.startsWith(".codexfast.") || !entry.endsWith(".app.asar.tmp")) {
-            continue;
-        }
-        const tempFile = (0, node_path_1.join)(context.paths.resources, entry);
-        try {
-            if ((0, node_fs_1.statSync)(tempFile).mtimeMs < staleBeforeMs) {
-                (0, node_fs_1.rmSync)(tempFile, { force: true });
-            }
-        }
-        catch {
-            (0, node_fs_1.rmSync)(tempFile, { force: true });
-        }
-    }
+    removeStaleArchiveTempFiles(context.paths.resources, Date.now() - staleArchiveTempFileMs);
 }
 function migrateLegacyUnpackedLayout() {
     const unpackedAppDir = (0, node_path_1.join)(context.paths.resources, "app");
