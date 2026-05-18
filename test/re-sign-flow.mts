@@ -31,8 +31,8 @@ import {
   assertGuardedState26513Build2867,
 } from "./helpers/patch-state-assertions.mts";
 import { assertCodesignCallContains as assertCodesignCallContainsHelper, assertCodesignCalls as assertCodesignCallsHelper, assertLaunchctlCallContains as assertLaunchctlCallContainsHelper, assertNoCodesignCalls as assertNoCodesignCallsHelper, assertNoLaunchCalls as assertNoLaunchCallsHelper, assertNoNpmCalls as assertNoNpmCallsHelper, assertNoTccutilCalls as assertNoTccutilCallsHelper, assertNpmCallContains as assertNpmCallContainsHelper, readOutput, resetCodesignCalls as resetCodesignCallsHelper, resetNpmCalls as resetNpmCallsHelper, resetTccutilCalls as resetTccutilCallsHelper, runScript as runScriptHelper, setupStubs as setupStubsHelper } from "./helpers/script-harness.mts";
-import { applyRuntimePatchesToBody } from "../src/patch-engine.mts";
-import { TARGET_SPECS } from "../src/patcher-targets.mts";
+import { runGeneratedCliSuite } from "./suites/generated-cli-suite.mts";
+import { runRuntimePatchSuite } from "./suites/runtime-patch-suite.mts";
 
 
 const rootDir = resolve(process.env.CODEXFAST_TEST_ROOT ?? process.cwd());
@@ -175,55 +175,12 @@ function assertIntegrityMatches(appDir: string, archivePath: string, message: st
   }
 }
 
-function assertGeneratedCliRuntimeRequirements(): void {
-  const generatedCli = readFileSync(join(rootDir, "bin", "codexfast"), "utf8");
-  assertContains(generatedCli, 'const MIN_NODE_VERSION = "18.12.0";', "expected generated CLI to enforce Node.js 18.12.0 or later");
-  assertContains(generatedCli, '"@electron/asar@3.4.1"', "expected generated CLI to pin the Node 18-compatible asar package");
-  assertContains(generatedCli, "runtimePatchReconnectMaxAttempts = 3", "expected generated CLI to bound runtime launch reconnect attempts");
-  assertContains(generatedCli, '"Page.getFrameTree"', "expected generated CLI to heartbeat the CDP runtime patch session");
-  assertContains(generatedCli, "Runtime patch session lost after", "expected generated CLI to report exhausted runtime patch reconnects clearly");
-  assertContains(generatedCli, "detached: true", "expected runtime launch to isolate Codex from the launch terminal process group");
-  assertContains(generatedCli, "child.unref();", "expected runtime launch to let Codex survive when the launcher exits");
-  assertNotContains(generatedCli, "tccutil", "expected generated CLI not to reset macOS ScreenCapture permissions");
-  assertNotContains(generatedCli, "ScreenCapture", "expected generated CLI not to contain ScreenCapture reset logic");
-  assertNotContains(generatedCli, "codexfast-browser-peer-auth", "expected generated CLI not to contain browser-use native pipe peer-auth compatibility patch");
-  assertNotContains(generatedCli, "missing-code-signing-identity", "expected generated CLI not to authorize missing-code-signing-identity peer-auth failures");
-  assertNotContains(generatedCli, "__SUPPORTED_APP_VERSIONS__", "expected generated CLI to inline supported app versions without placeholder names");
-}
-
-function assertPatcherTargetsRuntimeImportable(): void {
-  assertContains(
-    TARGET_SPECS.map((spec) => spec.id).join("\n"),
-    "speed-setting",
-    "expected patcher target specs to be importable at runtime",
-  );
-  assertNotContains(
-    TARGET_SPECS.map((spec) => spec.id).join("\n"),
-    "browser-use-native-pipe-peer-auth",
-    "expected browser-use native pipe peer-auth compatibility target to be removed",
-  );
-}
-
 function assertOutputOrder(output: string, earlier: string, later: string, message: string): void {
   const earlierIndex = output.indexOf(earlier);
   const laterIndex = output.indexOf(later);
   if (earlierIndex === -1 || laterIndex === -1 || earlierIndex >= laterIndex) {
     fail(message, output);
   }
-}
-
-function assertRuntimePatchEnginePatchesBody(): void {
-  const speedBody = "settings.agent.speed.label;n=se(),{serviceTierSettings:r,setServiceTier:i}=fe();if(!n)return null;let o;";
-  const speedResult = applyRuntimePatchesToBody("webview/assets/general-settings-demo.js", speedBody);
-  assertContains(speedResult.content, "{serviceTierSettings:r,setServiceTier:i}=fe();let o;", "expected runtime patch engine to keep patching matching Speed settings bodies");
-  assertContains(speedResult.patchedLabels.join("\n"), "Speed setting", "expected runtime patch engine to report patched Speed setting target");
-
-  const nativePipeBody = "function dP(){return lP().info(`browser-use native pipe peer authorization enabled`,{safe:{mode:a?`dev`:`packaged`},sensitive:{}}),e=>{let t=fP(e);return t==null?{authorized:!1,reason:`missing-socket-file-descriptor`}:s.authorizeSocketPeer(t,a)}}";
-  const nativePipeResult = applyRuntimePatchesToBody("webview/assets/browser-use-native-pipe-Demo.js", nativePipeBody);
-  if (nativePipeResult.content !== nativePipeBody) {
-    fail("expected runtime patch engine to leave browser-use native pipe peer auth unchanged", nativePipeResult.content);
-  }
-  assertNotContains(nativePipeResult.patchedLabels.join("\n"), "Browser-use native pipe peer auth", "expected runtime patch engine not to report removed native pipe target");
 }
 
 function renameBackupSuffixes(dir: string, fromSuffix: string, toSuffix: string): void {
@@ -301,9 +258,8 @@ function runApplyRestoreCase(caseConfig: ApplyRestoreCaseConfig): void {
 }
 
 function main(): void {
-  assertGeneratedCliRuntimeRequirements();
-  assertPatcherTargetsRuntimeImportable();
-  assertRuntimePatchEnginePatchesBody();
+  runGeneratedCliSuite(rootDir);
+  runRuntimePatchSuite();
   setupStubs();
 
   const helpOutput = join(tmpDir, "help-output.txt");
