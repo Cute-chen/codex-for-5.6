@@ -2,8 +2,13 @@ import { defineTargetSpecs } from "./builders.mts";
 
 const SPEED_LABEL_NEEDLE = "settings.agent.speed.label";
 const SPEED_SLASH_COMMAND_NEEDLE = "composer.speedSlashCommand.title";
+const SPEED_SLASH_COMMAND_DISABLE_NEEDLE = "composer.speedSlashCommand.disableDescription";
 const ADD_CONTEXT_SPEED_NEEDLE = "composer.addContext.speed.option.fast.description";
 const INTELLIGENCE_SPEED_NEEDLE = "composer.intelligenceDropdown.speed.title";
+const GUARDED_SIGNATURE_WITH_OPTION_COUNT =
+  /([A-Za-z_$][\w$]*)=((?:_e|ae|P|N|de|ie|se|xe)\(\),)(\{serviceTierSettings:([A-Za-z_$][\w$]*),setServiceTier:[^}]+\}=(?:Ce|se|be|xe|ye|Ve|de|fe)\(\);)if\(!\1\|\|\4\.availableOptions\.length<=1\)return null;/;
+const PATCHED_SIGNATURE_WITH_OPTION_COUNT =
+  /([A-Za-z_$][\w$]*)=((?:_e|ae|P|N|de|ie|se|xe)\(\),)(\{serviceTierSettings:([A-Za-z_$][\w$]*),setServiceTier:[^}]+\}=(?:Ce|se|be|xe|ye|Ve|de|fe)\(\);)if\(\4\.availableOptions\.length<=1\)return null;/;
 const GUARDED_SIGNATURE =
   /([A-Za-z_$][\w$]*)=((?:_e|ae|P|N|de|ie|se)\(\),)(\{serviceTierSettings:[^,}]+,setServiceTier:[^}]+\}=(?:Ce|se|be|xe|ye|Ve|de|fe)\(\);)if\(!\1\)return null;/;
 const PATCHED_SIGNATURE =
@@ -14,6 +19,10 @@ const SLASH_COMMAND_GUARDED_SIGNATURE =
   /(id:`speed`,title:[^,]+,description:[^,]+,requiresEmptyComposer:!1,enabled:)([A-Za-z_$][\w$]*)(,Icon:[^,]+,onSelect:[^,]+,dependencies:[A-Za-z_$][\w$]*})/;
 const SLASH_COMMAND_PATCHED_SIGNATURE =
   /(id:`speed`,title:[^,]+,description:[^,]+,requiresEmptyComposer:!1,enabled:)!0(,Icon:[^,]+,onSelect:[^,]+,dependencies:[A-Za-z_$][\w$]*})/;
+const SERVICE_TIER_SLASH_COMMAND_GUARDED_SIGNATURE =
+  /(id:[A-Za-z_$][\w$]*,title:[A-Za-z_$][\w$]*,description:[A-Za-z_$][\w$]*,requiresEmptyComposer:!1,enabled:)([A-Za-z_$][\w$]*)(,Icon:[A-Za-z_$][\w$]*,onSelect:[A-Za-z_$][\w$]*,dependencies:[A-Za-z_$][\w$]*})/;
+const SERVICE_TIER_SLASH_COMMAND_PATCHED_SIGNATURE =
+  /(id:[A-Za-z_$][\w$]*,title:[A-Za-z_$][\w$]*,description:[A-Za-z_$][\w$]*,requiresEmptyComposer:!1,enabled:)!0(,Icon:[A-Za-z_$][\w$]*,onSelect:[A-Za-z_$][\w$]*,dependencies:[A-Za-z_$][\w$]*})/;
 const ADD_CONTEXT_SPEED_GUARDED_SIGNATURE_OLD =
   /([A-Za-z_$][\w$]*)=Cr\(\),(\{serviceTierSettings:[^,}]+,setServiceTier:[^}]+\}=Ir\([^)]+\)[;,])/;
 const ADD_CONTEXT_SPEED_PATCHED_SIGNATURE_OLD =
@@ -38,6 +47,14 @@ const INTELLIGENCE_SPEED_GUARDED_SIGNATURE_QA =
   /(let )([A-Za-z_$][\w$]*);([^;]{0,260}\?\(\2=)([A-Za-z_$][\w$]*)(\?\(0,[A-Za-z_$][\w$]*\.jsx\)\([A-Za-z_$][\w$]*,\{selectedServiceTier:[^}]+,isLoading:[^}]+,setServiceTier:[^}]+,onSelectComplete:[^}]+\}\):null,)/;
 const INTELLIGENCE_SPEED_PATCHED_SIGNATURE_QA =
   /(let )([A-Za-z_$][\w$]*);([^;]{0,260}\?\(\2=)!0(\?\(0,[A-Za-z_$][\w$]*\.jsx\)\([A-Za-z_$][\w$]*,\{selectedServiceTier:[^}]+,isLoading:[^}]+,setServiceTier:[^}]+,onSelectComplete:[^}]+\}\):null,)/;
+const INTELLIGENCE_SPEED_GUARDED_SIGNATURE_OPTIONS_TERNARY =
+  /([A-Za-z_$][\w$]*)=[A-Za-z_$][\w$]*&&([A-Za-z_$][\w$]*)\.availableOptions\.length>1\?(\(0,[A-Za-z_$][\w$]*\.jsx\)\([A-Za-z_$][\w$]*,\{options:\2\.availableOptions,selectedServiceTier:[^}]+,isLoading:\2\.isLoading,setServiceTier:[^}]+,onSelectComplete:[^}]+\}\)):null,/;
+const INTELLIGENCE_SPEED_PATCHED_SIGNATURE_OPTIONS_TERNARY =
+  /([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*)\.availableOptions\.length>1\?(\(0,[A-Za-z_$][\w$]*\.jsx\)\([A-Za-z_$][\w$]*,\{options:\2\.availableOptions,selectedServiceTier:[^}]+,isLoading:\2\.isLoading,setServiceTier:[^}]+,onSelectComplete:[^}]+\}\)):null,/;
+const INTELLIGENCE_SPEED_GUARDED_SIGNATURE_TERNARY =
+  /([A-Za-z_$][\w$]*)=[A-Za-z_$][\w$]*\?(\(0,[A-Za-z_$][\w$]*\.jsx\)\([A-Za-z_$][\w$]*,\{selectedServiceTier:[^}]+,isLoading:[^}]+,setServiceTier:[^}]+,onSelectComplete:[^}]+\}\)):null,/;
+const INTELLIGENCE_SPEED_PATCHED_SIGNATURE_TERNARY =
+  /([A-Za-z_$][\w$]*)=(\(0,[A-Za-z_$][\w$]*\.jsx\)\([A-Za-z_$][\w$]*,\{selectedServiceTier:[^}]+,isLoading:[^}]+,setServiceTier:[^}]+,onSelectComplete:[^}]+\}\)),/;
 function resolveSpeedAvailabilityCall(serviceTierFactory: string): string {
   const availabilityCalls: Record<string, string> = {
     Ce: "_e",
@@ -66,6 +83,14 @@ function normalizeLegacySpeedSetting(
 }
 
 export const SPEED_TARGET_SPECS = defineTargetSpecs(
+  {
+    id: "speed-setting-option-count",
+    label: "Speed setting",
+    needle: SPEED_LABEL_NEEDLE,
+    guardedSignature: GUARDED_SIGNATURE_WITH_OPTION_COUNT,
+    patchedSignature: PATCHED_SIGNATURE_WITH_OPTION_COUNT,
+    applyReplacement: "$1=$2$3if($4.availableOptions.length<=1)return null;",
+  },
   {
     id: "speed-setting",
     label: "Speed setting",
@@ -117,6 +142,22 @@ export const SPEED_TARGET_SPECS = defineTargetSpecs(
     applyReplacement: "$1$2=!0,$5",
   },
   {
+    id: "intelligence-speed-menu-options-ternary",
+    label: "Composer Intelligence Speed menu",
+    needle: INTELLIGENCE_SPEED_NEEDLE,
+    guardedSignature: INTELLIGENCE_SPEED_GUARDED_SIGNATURE_OPTIONS_TERNARY,
+    patchedSignature: INTELLIGENCE_SPEED_PATCHED_SIGNATURE_OPTIONS_TERNARY,
+    applyReplacement: "$1=$2.availableOptions.length>1?$3:null,",
+  },
+  {
+    id: "intelligence-speed-menu-ternary",
+    label: "Composer Intelligence Speed menu",
+    needle: INTELLIGENCE_SPEED_NEEDLE,
+    guardedSignature: INTELLIGENCE_SPEED_GUARDED_SIGNATURE_TERNARY,
+    patchedSignature: INTELLIGENCE_SPEED_PATCHED_SIGNATURE_TERNARY,
+    applyReplacement: "$1=$2,",
+  },
+  {
     id: "intelligence-speed-menu-qa",
     label: "Composer Intelligence Speed menu",
     needle: INTELLIGENCE_SPEED_NEEDLE,
@@ -130,6 +171,14 @@ export const SPEED_TARGET_SPECS = defineTargetSpecs(
     needle: SPEED_SLASH_COMMAND_NEEDLE,
     guardedSignature: SLASH_COMMAND_GUARDED_SIGNATURE,
     patchedSignature: SLASH_COMMAND_PATCHED_SIGNATURE,
+    applyReplacement: "$1!0$3",
+  },
+  {
+    id: "service-tier-slash-command",
+    label: "Fast slash command",
+    needle: SPEED_SLASH_COMMAND_DISABLE_NEEDLE,
+    guardedSignature: SERVICE_TIER_SLASH_COMMAND_GUARDED_SIGNATURE,
+    patchedSignature: SERVICE_TIER_SLASH_COMMAND_PATCHED_SIGNATURE,
     applyReplacement: "$1!0$3",
   },
 );

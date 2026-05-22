@@ -185,7 +185,7 @@ function main(): void {
 
   const launchSuccessApp = join(tmpDir, "LaunchSuccess.app");
   const launchSuccessOutput = join(tmpDir, "launch-success-output.txt");
-  prepareFakeApp(launchSuccessApp, "26.513.20950", "2816");
+  prepareFakeApp(launchSuccessApp, "26.519.22136", "3003");
   runScriptCommand(launchSuccessApp, ["launch"], launchSuccessOutput, {
     CODEXFAST_TEST_RUNTIME_LAUNCH_SUCCESS: "1",
   });
@@ -198,7 +198,7 @@ function main(): void {
 
   const launchSessionLostApp = join(tmpDir, "LaunchSessionLost.app");
   const launchSessionLostOutput = join(tmpDir, "launch-session-lost-output.txt");
-  prepareFakeApp(launchSessionLostApp, "26.513.20950", "2816");
+  prepareFakeApp(launchSessionLostApp, "26.519.22136", "3003");
   runScriptCommand(launchSessionLostApp, ["launch"], launchSessionLostOutput, {
     CODEXFAST_TEST_RUNTIME_LAUNCH_SESSION_LOST: "1",
     CODEXFAST_TEST_RUNTIME_LAUNCH_SUCCESS: "1",
@@ -211,7 +211,7 @@ function main(): void {
 
   const menuLaunchSuccessApp = join(tmpDir, "MenuLaunchSuccess.app");
   const menuLaunchSuccessOutput = join(tmpDir, "menu-launch-success-output.txt");
-  prepareFakeApp(menuLaunchSuccessApp, "26.513.20950", "2816");
+  prepareFakeApp(menuLaunchSuccessApp, "26.519.22136", "3003");
   runScript(menuLaunchSuccessApp, "1\n\nq\n", menuLaunchSuccessOutput, {
     CODEXFAST_TEST_RUNTIME_LAUNCH_SUCCESS: "1",
   });
@@ -224,7 +224,7 @@ function main(): void {
 
   const nonRunningLaunchApp = join(tmpDir, "NonRunningLaunch.app");
   const nonRunningLaunchOutput = join(tmpDir, "non-running-launch-output.txt");
-  prepareFakeApp(nonRunningLaunchApp, "26.513.20950", "2816");
+  prepareFakeApp(nonRunningLaunchApp, "26.519.22136", "3003");
   runScriptCommand(nonRunningLaunchApp, ["launch"], nonRunningLaunchOutput, { CODEXFAST_TEST_ALLOW_NONZERO: "1" });
   assertContains(readOutput(nonRunningLaunchOutput), "Action: launch", "expected launch to print an action header", readOutput(nonRunningLaunchOutput));
   assertContains(readOutput(nonRunningLaunchOutput), "Compatibility: supported", "expected supported launch to print compatibility", readOutput(nonRunningLaunchOutput));
@@ -235,7 +235,7 @@ function main(): void {
 
   const missingPgrepLaunchApp = join(tmpDir, "MissingPgrepLaunch.app");
   const missingPgrepLaunchOutput = join(tmpDir, "missing-pgrep-launch-output.txt");
-  prepareFakeApp(missingPgrepLaunchApp, "26.513.20950", "2816");
+  prepareFakeApp(missingPgrepLaunchApp, "26.519.22136", "3003");
   runScriptCommand(missingPgrepLaunchApp, ["launch"], missingPgrepLaunchOutput, { CODEXFAST_TEST_ALLOW_NONZERO: "1", PATH: stubBin });
   assertContains(readOutput(missingPgrepLaunchOutput), "Action: launch", "expected launch to print an action header", readOutput(missingPgrepLaunchOutput));
   assertContains(readOutput(missingPgrepLaunchOutput), "Compatibility: supported", "expected supported launch to print compatibility", readOutput(missingPgrepLaunchOutput));
