@@ -6,6 +6,10 @@ This project follows a simple release-oriented changelog format.
 
 ## [Unreleased]
 
+### Added
+
+- Added support for `Codex.app` `26.519.81530` (`build 3178`) after direct installed-bundle inspection confirmed the existing 26.519 patch signatures still match the updated bundle filenames.
+
 ## [0.20.0] - 2026-05-23
 
 ### Added
