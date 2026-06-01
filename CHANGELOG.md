@@ -6,6 +6,12 @@ This project follows a simple release-oriented changelog format.
 
 ## [Unreleased]
 
+## [0.22.1] - 2026-06-01
+
+### Fixed
+
+- Fixed a probabilistic runtime launch failure on slower `26.527.31326` startups where initial JavaScript traffic was still active but no patch target had been observed before the old fixed target-discovery deadline.
+
 ## [0.22.0] - 2026-05-30
 
 ### Added

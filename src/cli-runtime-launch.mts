@@ -43,6 +43,11 @@ type RuntimePatchSessionHandle = {
   lost: Promise<Error>;
 };
 
+type RuntimeFetchPatchOutcome = {
+  labels: string[];
+  sawJavaScript: boolean;
+};
+
 type CodexRunningCheck =
   | { ok: true; running: boolean }
   | { ok: false; message: string };
@@ -58,7 +63,8 @@ export type RuntimeLaunchOptions = {
   }) => boolean;
 };
 
-const runtimePatchSessionTimeoutMs = 12_000;
+const runtimePatchInitialTargetTimeoutMs = 45_000;
+const runtimePatchNoTargetIdleMs = 2_500;
 const runtimePatchSettleMs = 750;
 const runtimePatchInitialLoadSettleMs = 1_000;
 const runtimePatchHeartbeatIntervalMs = 5_000;
@@ -170,11 +176,11 @@ async function handleFetchRequestPaused(
   cdp: CdpConnection,
   patcherSource: string,
   params: FetchRequestPausedParams,
-): Promise<string[]> {
+): Promise<RuntimeFetchPatchOutcome> {
   const resourceUrl = params.request.url;
   if (!isRuntimeJavaScriptResource(resourceUrl)) {
     await continueFetchRequest(cdp, params.requestId);
-    return [];
+    return { labels: [], sawJavaScript: false };
   }
   debugRuntime(`paused ${resourceUrl}`);
 
@@ -186,13 +192,13 @@ async function handleFetchRequestPaused(
   } catch {
     debugRuntime(`getResponseBody failed ${resourceUrl}`);
     await continueFetchRequest(cdp, params.requestId);
-    return [];
+    return { labels: [], sawJavaScript: true };
   }
 
   if (typeof bodyResult.body !== "string") {
     debugRuntime(`missing body ${resourceUrl}`);
     await continueFetchRequest(cdp, params.requestId);
-    return [];
+    return { labels: [], sawJavaScript: true };
   }
 
   const body = bodyResult.base64Encoded
@@ -208,7 +214,7 @@ async function handleFetchRequestPaused(
   } catch (error) {
     debugRuntime(`patch failed ${resourceUrl}: ${asError(error).message}`);
     await continueFetchRequest(cdp, params.requestId);
-    return [];
+    return { labels: [], sawJavaScript: true };
   }
   const labels = [
     ...patchResult.patchedLabels,
@@ -222,7 +228,7 @@ async function handleFetchRequestPaused(
 
   if (patchResult.content === body) {
     await continueFetchRequest(cdp, params.requestId);
-    return labels;
+    return { labels, sawJavaScript: true };
   }
 
   await cdp.send("Fetch.fulfillRequest", {
@@ -231,7 +237,7 @@ async function handleFetchRequestPaused(
     responseHeaders: responseHeadersForFulfill(params.responseHeaders),
     body: Buffer.from(patchResult.content, "utf8").toString("base64"),
   });
-  return labels;
+  return { labels, sawJavaScript: true };
 }
 
 function runtimePatchSessionLostMessage(error: Error): string {
@@ -324,6 +330,7 @@ async function startRuntimePatchSession(
   let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   let resolveLost: (error: Error) => void = () => undefined;
   let markInitialObserved: () => void = () => undefined;
+  let markInitialJavaScriptTraffic: () => void = () => undefined;
   const lost = new Promise<Error>((resolve) => {
     resolveLost = resolve;
   });
@@ -411,7 +418,8 @@ async function startRuntimePatchSession(
         attachedCdp,
         patcherSource,
         params as FetchRequestPausedParams,
-      ).then((labels) => {
+      ).then((outcome) => {
+        const { labels } = outcome;
         let sawNewLabel = false;
         for (const label of labels) {
           if (!observedLabels.has(label)) {
@@ -421,6 +429,8 @@ async function startRuntimePatchSession(
         }
         if (!initialCompleted && labels.length > 0) {
           markInitialObserved();
+        } else if (!initialCompleted && outcome.sawJavaScript) {
+          markInitialJavaScriptTraffic();
         }
         if (initialCompleted && sawNewLabel) {
           debugRuntime(
@@ -460,7 +470,8 @@ async function startRuntimePatchSession(
 
   try {
     const initialSession = new Promise<string[]>((resolve, reject) => {
-      let timeout: ReturnType<typeof setTimeout> | null = null;
+      let hardTimeout: ReturnType<typeof setTimeout> | null = null;
+      let noTargetIdleTimer: ReturnType<typeof setTimeout> | null = null;
       let completed = false;
       let finishStarted = false;
 
@@ -469,9 +480,13 @@ async function startRuntimePatchSession(
           clearTimeout(settleTimer);
           settleTimer = null;
         }
-        if (timeout) {
-          clearTimeout(timeout);
-          timeout = null;
+        if (hardTimeout) {
+          clearTimeout(hardTimeout);
+          hardTimeout = null;
+        }
+        if (noTargetIdleTimer) {
+          clearTimeout(noTargetIdleTimer);
+          noTargetIdleTimer = null;
         }
       };
 
@@ -517,15 +532,30 @@ async function startRuntimePatchSession(
         })();
       };
 
+      const markJavaScriptTraffic = (): void => {
+        if (completed || finishStarted || observedLabels.size > 0) {
+          return;
+        }
+        if (noTargetIdleTimer) {
+          clearTimeout(noTargetIdleTimer);
+        }
+        noTargetIdleTimer = setTimeout(finish, runtimePatchNoTargetIdleMs);
+      };
+
       const markObserved = (): void => {
         if (completed || settleTimer) {
           return;
         }
+        if (noTargetIdleTimer) {
+          clearTimeout(noTargetIdleTimer);
+          noTargetIdleTimer = null;
+        }
         settleTimer = setTimeout(finish, runtimePatchSettleMs);
       };
       markInitialObserved = markObserved;
+      markInitialJavaScriptTraffic = markJavaScriptTraffic;
 
-      timeout = setTimeout(finish, runtimePatchSessionTimeoutMs);
+      hardTimeout = setTimeout(finish, runtimePatchInitialTargetTimeoutMs);
     });
     void initialSession.catch(() => undefined);
     registerRuntimeFetchHandler(connectionGeneration);
