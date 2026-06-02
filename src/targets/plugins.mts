@@ -48,6 +48,10 @@ const PLUGINS_SIDEBAR_GUARDED_SIGNATURE_26527 =
   /(\{authMethod:([A-Za-z_$][\w$]*)\}=[^,]+,)([A-Za-z_$][\w$]*)=xa\(`533078438`\),([A-Za-z_$][\w$]*)=wl\(\2\),([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*)&&\3&&\4,([A-Za-z_$][\w$]*)=(mc\(\{hostId:[^}]+\}\)),([A-Za-z_$][\w$]*)=\6&&\7&&!\4([,;])/;
 const PLUGINS_SIDEBAR_PATCHED_SIGNATURE_26527 =
   /(\{authMethod:([A-Za-z_$][\w$]*)\}=[^,]+,)([A-Za-z_$][\w$]*)=xa\(`533078438`\),([A-Za-z_$][\w$]*)=wl\(\2\),([A-Za-z_$][\w$]*)=!1,([A-Za-z_$][\w$]*)=(mc\(\{hostId:[^}]+\}\)),([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*)&&\7([,;])/;
+const PLUGINS_SIDEBAR_GUARDED_SIGNATURE_26527_HC =
+  /(\{authMethod:([A-Za-z_$][\w$]*)\}=[^,]+,)([A-Za-z_$][\w$]*)=xa\(`533078438`\),([A-Za-z_$][\w$]*)=lc\(\2\),([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*)&&\3&&\4,([A-Za-z_$][\w$]*)=(hc\(\{hostId:[^}]+\}\)),([A-Za-z_$][\w$]*)=\6&&\7&&!\4([,;])/;
+const PLUGINS_SIDEBAR_PATCHED_SIGNATURE_26527_HC =
+  /(\{authMethod:([A-Za-z_$][\w$]*)\}=[^,]+,)([A-Za-z_$][\w$]*)=xa\(`533078438`\),([A-Za-z_$][\w$]*)=lc\(\2\),([A-Za-z_$][\w$]*)=!1,([A-Za-z_$][\w$]*)=(hc\(\{hostId:[^}]+\}\)),([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*)&&\7([,;])/;
 const PLUGINS_PAGE_CONTENT_GUARDED_SIGNATURE =
   /(let )([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*),([A-Za-z_$][\w$]*),([A-Za-z_$][\w$]*);(if\(e\[\d+\]!==[A-Za-z_$][\w$]*\|\|e\[\d+\]!==\2\|\|)/;
 const PLUGINS_PAGE_CONTENT_PATCHED_SIGNATURE =
@@ -168,6 +172,14 @@ export const PLUGIN_TARGET_SPECS = defineTargetSpecs(
     guardedSignature: PLUGINS_SIDEBAR_GUARDED_SIGNATURE_26527,
     patchedSignature: PLUGINS_SIDEBAR_PATCHED_SIGNATURE_26527,
     applyReplacement: "$1$3=xa(`533078438`),$4=wl($2),$5=!1,$7=$8,$9=$6&&$7$10",
+  },
+  {
+    id: "plugins-access-26527-hc",
+    label: "Plugins access",
+    needle: PLUGINS_SIDEBAR_NEEDLE,
+    guardedSignature: PLUGINS_SIDEBAR_GUARDED_SIGNATURE_26527_HC,
+    patchedSignature: PLUGINS_SIDEBAR_PATCHED_SIGNATURE_26527_HC,
+    applyReplacement: "$1$3=xa(`533078438`),$4=lc($2),$5=!1,$7=$8,$9=$6&&$7$10",
   },
   {
     id: "plugins-page-content-26429",

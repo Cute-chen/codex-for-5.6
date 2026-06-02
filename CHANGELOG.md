@@ -6,6 +6,12 @@ This project follows a simple release-oriented changelog format.
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-06-02
+
+### Added
+
+- Added support for `Codex.app` `26.527.60818` (`build 3437`) after direct installed-bundle inspection confirmed the existing 26.527 patch signatures still match except for the updated Plugins sidebar helper names.
+
 ## [0.22.1] - 2026-06-01
 
 ### Fixed

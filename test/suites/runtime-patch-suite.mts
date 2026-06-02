@@ -44,6 +44,13 @@ export function runRuntimePatchSuite(): void {
   assertNotContains(pluginsAccess26527Result.content, "e&&d&&!l", "expected 26.527 Plugins sidebar patch to remove the API-key exclusion from the Plugins label state");
   assertContains(pluginsAccess26527Result.patchedLabels.join("\n"), "Plugins access", "expected 26.527 Plugins sidebar patch to report Plugins access target");
 
+  const pluginsAccess2652760818Body = "sidebarElectron.pluginsDisabledTooltip;function QS({desktopNavItemsEnabled:e}){let n=J(K),{authMethod:s}=Oo(),c=xa(`533078438`),l=lc(s),u=e&&c&&l,d=hc({hostId:mr}),f=e&&d&&!l,p=vl();}";
+  const pluginsAccess2652760818Result = applyRuntimePatchesToBody("webview/assets/app-main-26527-60818.js", pluginsAccess2652760818Body);
+  assertContains(pluginsAccess2652760818Result.content, "u=!1,d=hc({hostId:mr}),f=e&&d", "expected 26.527.60818 Plugins sidebar patch to disable the API-key gate and keep the host capability gate");
+  assertNotContains(pluginsAccess2652760818Result.content, "e&&c&&l", "expected 26.527.60818 Plugins sidebar patch to remove the disabled Plugins nav state");
+  assertNotContains(pluginsAccess2652760818Result.content, "e&&d&&!l", "expected 26.527.60818 Plugins sidebar patch to remove the API-key exclusion from the Plugins label state");
+  assertContains(pluginsAccess2652760818Result.patchedLabels.join("\n"), "Plugins access", "expected 26.527.60818 Plugins sidebar patch to report Plugins access target");
+
   const nativePipeBody = "function dP(){return lP().info(`browser-use native pipe peer authorization enabled`,{safe:{mode:a?`dev`:`packaged`},sensitive:{}}),e=>{let t=fP(e);return t==null?{authorized:!1,reason:`missing-socket-file-descriptor`}:s.authorizeSocketPeer(t,a)}}";
   const nativePipeResult = applyRuntimePatchesToBody("webview/assets/browser-use-native-pipe-Demo.js", nativePipeBody);
   if (nativePipeResult.content !== nativePipeBody) {
