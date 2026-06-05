@@ -86,9 +86,9 @@ const PLUGIN_POST_INSTALL_APP_CONNECT_FLOW_GUARDED_SIGNATURE =
 const PLUGIN_POST_INSTALL_APP_CONNECT_FLOW_PATCHED_SIGNATURE =
   /(if\([A-Za-z_$][\w$]*\([A-Za-z_$][\w$]*\),)codexfastAppsNeedingAuth\.length===0&&([A-Za-z_$][\w$]*)\.length===0(\)\{)/;
 const PLUGIN_POST_INSTALL_APP_CONNECT_APPS_GUARDED_SIGNATURE =
-  /(F\(\{apps:)([A-Za-z_$][\w$]*)\.appsNeedingAuth(,browserExtensions:)/;
+  /(([A-Za-z_$][\w$]*)\(\{apps:)([A-Za-z_$][\w$]*)\.appsNeedingAuth(,browserExtensions:)/;
 const PLUGIN_POST_INSTALL_APP_CONNECT_APPS_PATCHED_SIGNATURE =
-  /(F\(\{apps:)codexfastAppsNeedingAuth(,browserExtensions:)/;
+  /(([A-Za-z_$][\w$]*)\(\{apps:)codexfastAppsNeedingAuth(,browserExtensions:)/;
 const PLUGIN_POST_INSTALL_APP_CONNECT_AUTO_OPEN_GUARDED_SIGNATURE =
   /(connectingAppId:)([A-Za-z_$][\w$]*)\.authPolicy===`ON_INSTALL`&&\2\.appsNeedingAuth\.length===1&&([A-Za-z_$][\w$]*)\.length===0\?\2\.appsNeedingAuth\[0\]\.id:void 0/;
 const PLUGIN_POST_INSTALL_APP_CONNECT_AUTO_OPEN_PATCHED_SIGNATURE =
@@ -294,7 +294,7 @@ export const PLUGIN_TARGET_SPECS = defineTargetSpecs(
     needle: "appsNeedingAuth",
     guardedSignature: PLUGIN_POST_INSTALL_APP_CONNECT_APPS_GUARDED_SIGNATURE,
     patchedSignature: PLUGIN_POST_INSTALL_APP_CONNECT_APPS_PATCHED_SIGNATURE,
-    applyReplacement: "$1codexfastAppsNeedingAuth$3",
+    applyReplacement: "$1codexfastAppsNeedingAuth$4",
   },
   {
     id: "plugin-post-install-app-connect-auto-open-26601",

@@ -83,6 +83,7 @@ const runtimePatchReconnectDelayMs = 1_000;
 const runtimePatchDefaultRequiredInitialLabels = ["Plugins access"];
 const runtimePatchNoPluginsAccessRequiredVersionKeys = new Set([
   "26.601.21317+3511",
+  "26.602.30954+3575",
 ]);
 const runtimePatchRequiredInitialReloadMaxAttempts = 1;
 

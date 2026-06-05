@@ -6,6 +6,16 @@ This project follows a simple release-oriented changelog format.
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-06-05
+
+### Added
+
+- Added support for `Codex.app` `26.602.30954` (`build 3575`) after direct installed-bundle inspection confirmed the `26.601` target family still matches with renamed assets.
+
+### Fixed
+
+- Fixed the `26.602` post-install app-connect patch to capture the minified install-session setter name instead of assuming the earlier `F({apps:...})` shape.
+
 ## [0.24.0] - 2026-06-03
 
 ### Added

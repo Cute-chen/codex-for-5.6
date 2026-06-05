@@ -86,6 +86,12 @@ export function runRuntimePatchSuite(): void {
   assertNotContains(pluginPostInstallAppConnect26601Result.content, "F({apps:_.appsNeedingAuth", "expected 26.601 post-install app connect patch not to pass an empty backend app auth list into the install session");
   assertContains(pluginPostInstallAppConnect26601Result.patchedLabels.join("\n"), "Plugin post-install app connect", "expected 26.601 post-install app connect patch to report app connect target");
 
+  const pluginPostInstallAppConnect26602Body = "appsNeedingAuth;await Promise.all([p(je),p(tt)]);let y=await kt({authPolicy:_.authPolicy,codexHome:l,hostId:t,plugin:h,queryClient:a,windowType:`electron`});if(Ae(h),_.authPolicy===`ON_USE`||_.appsNeedingAuth.length===0&&y.length===0){let e=d.postInstallComposerPrefill?.trim();e&&m({text:e}),D();return}I({apps:_.appsNeedingAuth,browserExtensions:y,connectingAppId:_.authPolicy===`ON_INSTALL`&&_.appsNeedingAuth.length===1&&y.length===0?_.appsNeedingAuth[0].id:void 0,options:d,plugin:h})";
+  const pluginPostInstallAppConnect26602Result = applyRuntimePatchesToBody("webview/assets/use-plugin-install-flow-26602.js", pluginPostInstallAppConnect26602Body);
+  assertContains(pluginPostInstallAppConnect26602Result.content, "I({apps:codexfastAppsNeedingAuth,browserExtensions:y", "expected 26.602 post-install app connect patch to pass fallback apps into the renamed install session setter");
+  assertNotContains(pluginPostInstallAppConnect26602Result.content, "I({apps:_.appsNeedingAuth", "expected 26.602 post-install app connect patch not to depend on the empty backend app auth list");
+  assertContains(pluginPostInstallAppConnect26602Result.patchedLabels.join("\n"), "Plugin post-install app connect", "expected 26.602 post-install app connect patch to report app connect target");
+
   const sharedMarketplacePrefetch26601Body = "additionalMarketplaceKinds;return D(e,I,{enabled:z,additionalMarketplaceKinds:[`shared-with-me`]}),E({enabled:z,hostId:e,marketplaceKind:`shared-with-me`}),E({enabled:z,hostId:e,marketplaceKind:`workspace-directory`}),null";
   const sharedMarketplacePrefetch26601Result = applyRuntimePatchesToBody("webview/assets/app-prefetch-impl-26601.js", sharedMarketplacePrefetch26601Body);
   assertContains(sharedMarketplacePrefetch26601Result.content, "additionalMarketplaceKinds:[]}),E({enabled:!1,hostId:e,marketplaceKind:`shared-with-me`})", "expected 26.601 shared marketplace prefetch patch to skip the remote shared plugin catalog");
