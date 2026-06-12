@@ -109,6 +109,10 @@ const PLUGINS_CATALOG_VISIBILITY_GUARDED_SIGNATURE =
   /function ([A-Za-z_$][\w$]*)\(([A-Za-z_$][\w$]*)\)\{return \2!==`chatgpt`\}/;
 const PLUGINS_CATALOG_VISIBILITY_PATCHED_SIGNATURE =
   /function ([A-Za-z_$][\w$]*)\(([A-Za-z_$][\w$]*)\)\{return !1\}/;
+const PLUGINS_CATALOG_MARKETPLACE_FILTER_GUARDED_SIGNATURE =
+  /(,)([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*);([A-Za-z_$][\w$]*)\?\2=([A-Za-z_$][\w$]*):([A-Za-z_$][\w$]*)&&\(\2=([A-Za-z_$][\w$]*)\);(let [A-Za-z_$][\w$]*=Ae\()/;
+const PLUGINS_CATALOG_MARKETPLACE_FILTER_PATCHED_SIGNATURE =
+  /(,)([A-Za-z_$][\w$]*)=([A-Za-z_$][\w$]*);([A-Za-z_$][\w$]*)\?\2=\3:([A-Za-z_$][\w$]*)&&\(\2=\3\);(let [A-Za-z_$][\w$]*=Ae\()/;
 function patchPluginsSidebar26513(
   _match: string,
   prefix: string,
@@ -336,5 +340,13 @@ export const PLUGIN_TARGET_SPECS = defineTargetSpecs(
     guardedSignature: PLUGINS_CATALOG_VISIBILITY_GUARDED_SIGNATURE,
     patchedSignature: PLUGINS_CATALOG_VISIBILITY_PATCHED_SIGNATURE,
     applyReplacement: "function $1($2){return !1}",
+  },
+  {
+    id: "plugins-catalog-marketplace-filter-26609",
+    label: "Plugins catalog visibility",
+    needle: PLUGINS_CATALOG_VISIBILITY_NEEDLE,
+    guardedSignature: PLUGINS_CATALOG_MARKETPLACE_FILTER_GUARDED_SIGNATURE,
+    patchedSignature: PLUGINS_CATALOG_MARKETPLACE_FILTER_PATCHED_SIGNATURE,
+    applyReplacement: "$1$2=$3;$4?$2=$3:$6&&($2=$3);$8",
   },
 );

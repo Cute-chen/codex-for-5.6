@@ -4,7 +4,15 @@ All notable changes to `codexfast` will be documented in this file.
 
 This project follows a simple release-oriented changelog format.
 
-## [Unreleased]
+## [0.29.0] - 2026-06-12
+
+### Added
+
+- Added support for `Codex.app` `26.609.30741` (`build 3808`) after direct installed-bundle inspection confirmed the `26.608.12217` target mapping still matches with renamed assets.
+
+### Fixed
+
+- Fixed the `26.609.30741` Plugins catalog path so the `4218407052` vertical-catalog branch no longer filters out the `openai-curated` marketplace after `list-plugins` returns it.
 
 ## [0.28.0] - 2026-06-10
 

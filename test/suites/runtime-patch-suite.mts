@@ -109,6 +109,12 @@ export function runRuntimePatchSuite(): void {
   assertNotContains(pluginCatalogVisibility26601Result.content, "return e!==`chatgpt`", "expected 26.601 plugin catalog patch to remove the auth-method catalog restriction");
   assertContains(pluginCatalogVisibility26601Result.patchedLabels.join("\n"), "Plugins catalog visibility", "expected 26.601 plugin catalog patch to report catalog visibility target");
 
+  const pluginCatalogMarketplaceFilter26609Body = "openai-curated-marketplaces-hidden;let p=ne(`4218407052`),m=pe(ae(e)?.authMethod??null),h=ve;m?h=xe:p&&(h=be);let g=Ae({additionalMarketplaceKinds:d,includeRemoteCatalog:s?.includeRemoteCatalog??!0,includeVerticalCatalog:!p});";
+  const pluginCatalogMarketplaceFilter26609Result = applyRuntimePatchesToBody("webview/assets/use-plugins-26609.js", pluginCatalogMarketplaceFilter26609Body);
+  assertContains(pluginCatalogMarketplaceFilter26609Result.content, "h=ve;m?h=ve:p&&(h=ve);", "expected 26.609 plugin catalog patch not to exclude curated marketplaces when the vertical-catalog flag is enabled");
+  assertNotContains(pluginCatalogMarketplaceFilter26609Result.content, "m?h=xe:p&&(h=be)", "expected 26.609 plugin catalog patch to remove marketplace exclusion from the visible catalog path");
+  assertContains(pluginCatalogMarketplaceFilter26609Result.patchedLabels.join("\n"), "Plugins catalog visibility", "expected 26.609 plugin catalog marketplace filter patch to report catalog visibility target");
+
   const nativePipeBody = "function dP(){return lP().info(`browser-use native pipe peer authorization enabled`,{safe:{mode:a?`dev`:`packaged`},sensitive:{}}),e=>{let t=fP(e);return t==null?{authorized:!1,reason:`missing-socket-file-descriptor`}:s.authorizeSocketPeer(t,a)}}";
   const nativePipeResult = applyRuntimePatchesToBody("webview/assets/browser-use-native-pipe-Demo.js", nativePipeBody);
   if (nativePipeResult.content !== nativePipeBody) {

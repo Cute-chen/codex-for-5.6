@@ -10,7 +10,7 @@ Use these checks when validating `launch` behavior. Do not mark a build as real-
 
 - `npx codexfast launch` starts Codex when Codex is not already running
 - The launched session opens with runtime patches active
-- The launch output reports the required initial target labels for the current build before it reports `Runtime launch completed`; older builds include `Plugins access`, while `26.601.21317`, `26.602.30954`, `26.602.40724`, `26.602.71036`, and `26.608.12217` do not require that legacy target because the old sidebar/page/detail gates are absent
+- The launch output reports the required initial target labels for the current build before it reports `Runtime launch completed`; older builds include `Plugins access`, while `26.601.21317`, `26.602.30954`, `26.602.40724`, `26.602.71036`, `26.608.12217`, and `26.609.30741` do not require that legacy target because the old sidebar/page/detail gates are absent
 - The `codexfast launch` process remains running while the launched Codex session is open
 - The runtime patch session heartbeat stays quiet during normal use, and no `Runtime patch session lost` message appears
 - If the launch process exits or the runtime patch session is lost after Codex has started, Codex keeps running without further runtime patching
@@ -44,7 +44,8 @@ Use these checks when validating `launch` behavior. Do not mark a build as real-
 - The `Plugins` sidebar entry is visible for custom API users
 - Opening `Plugins` does not fail only because of the auth-method gate
 - On builds with separate Plugins page/detail gates, plugin cards and plugin detail views show plugin-related content instead of falling back to skills-only or redirecting to `/skills`
-- On builds with curated catalog gates, the full curated OpenAI plugin catalog remains visible for custom API users instead of showing only the limited-catalog placeholder such as `More plugins coming soon`
+- On builds with curated catalog gates, the full curated OpenAI plugin catalog remains visible for custom API users instead of showing only the limited-catalog placeholder such as `More plugins coming soon` or only bundled addable plugins such as Computer Use and LaTeX
+- On builds with category-based Plugins pages, curated OpenAI categories such as Productivity, Developer Tools, Communication, or similar category sections are visible, and known curated plugins such as Linear, Slack, Google Calendar, or Figma can appear through browse or search when the local catalog contains them
 - On builds with install-flow gates, at least one plugin install button is not blocked solely by aggregate connector-unavailable state
 - On builds with plugin detail app-connect gates, an installed plugin that declares an app shows the app connect area on the plugin detail page even if the directory app list is unavailable
 - On builds with install-modal content gates, the install modal shows basic plugin details such as About, Includes, or Capabilities instead of an empty information card
