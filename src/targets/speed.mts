@@ -21,7 +21,7 @@ const SERVICE_TIER_ALLOWANCE_PATCHED_SIGNATURE =
 const SERVICE_TIER_CONVERSATION_FALLBACK_GUARDED_SIGNATURE =
   /(let [^;]+,[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*!=null&&[A-Za-z_$][\w$]*\?\.serviceTier!==void 0\?[^;]+;[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*!=null&&\([A-Za-z_$][\w$]*\?\.serviceTier!==void 0\|\|[A-Za-z_$][\w$]*\?\.params\.serviceTier!==void 0\)\?[^,]+:[A-Za-z_$][\w$]*\([^,]+,[A-Za-z_$][\w$]*,[A-Za-z_$][\w$]*\),)/;
 const SERVICE_TIER_CONVERSATION_FALLBACK_PATCHED_SIGNATURE =
-  /(let [^;]+,[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*!=null&&[A-Za-z_$][\w$]*\?\.params\.serviceTier!==void 0\?[^;]+;[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*!=null&&[A-Za-z_$][\w$]*\?\.params\.serviceTier!==void 0\?[^,]+:[A-Za-z_$][\w$]*\([^,]+,[A-Za-z_$][\w$]*,[A-Za-z_$][\w$]*\),)/;
+  /(let [^;]+,[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*\.serviceTier;[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*\([^,]+,[A-Za-z_$][\w$]*,[A-Za-z_$][\w$]*\),)/;
 const GUARDED_SIGNATURE =
   /([A-Za-z_$][\w$]*)=((?:_e|ae|P|N|de|ie|se|je)\(\),)(\{serviceTierSettings:[^,}]+,setServiceTier:[^}]+\}=(?:Ce|se|be|xe|ye|Ve|de|fe|_e)\(\);)if\(!\1\)return null;/;
 const PATCHED_SIGNATURE =
@@ -107,8 +107,12 @@ function patchConversationServiceTierFallback(match: string): string {
       "",
     )
     .replace(
-      /\([A-Za-z_$][\w$]*\?\.serviceTier(?:!==void 0|!=null)\|\|([A-Za-z_$][\w$]*\?\.params\.serviceTier!==void 0)\)/,
-      "$1",
+      /[A-Za-z_$][\w$]*!=null&&([A-Za-z_$][\w$]*)\?\.params\.serviceTier(?:!==void 0|!=null)\?\1\.params\.serviceTier:/,
+      "",
+    )
+    .replace(
+      /([A-Za-z_$][\w$]*=)[A-Za-z_$][\w$]*!=null&&\([^)]*\)\?[A-Za-z_$][\w$]*\?[A-Za-z_$][\w$]*:null:([A-Za-z_$][\w$]*\([^,]+,[A-Za-z_$][\w$]*,[A-Za-z_$][\w$]*\),)/,
+      "$1$2",
     );
 }
 

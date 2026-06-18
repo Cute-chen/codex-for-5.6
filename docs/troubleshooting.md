@@ -26,6 +26,12 @@ If Settings Fast or Plugins content is still missing after launch:
 2. Fully quit Codex, rerun `npx codexfast launch`, and keep that process open while navigating to Settings and Plugins.
 3. If the process is still running and the build is supported, inspect runtime debug output for lazy chunk matches such as `general-settings-*.js` and `skills-page-*.js`.
 
+If a Fast conversation falls back to Standard after stopping, editing, and resending:
+
+1. Inspect the shared service-tier hook in `use-service-tier-settings-*.js`.
+2. Confirm `serviceTierForRequest` is not giving stale `latestThreadSettings.serviceTier` or latest-turn `params.serviceTier` priority over the configured Settings tier.
+3. Confirm the composer submit path passes the patched `serviceTierForRequest` value into the follow-up or restore request.
+
 If launch reports `Runtime patch session lost after 3 reconnect attempts`:
 
 1. Fully quit Codex and confirm no `Codex` main process remains.

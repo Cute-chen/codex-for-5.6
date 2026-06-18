@@ -38,6 +38,7 @@ Use these checks when validating `launch` behavior. Do not mark a build as real-
 - Typing `/fast` in the composer shows the slash command item
 - Selecting `/fast` can enable and disable Fast mode without breaking the UI
 - On service-tier bundles, the selected Fast tier persists and is used by the composer request/config path for custom API users; it must not be normalized back to `null` or standard by the shared service-tier allowance hook
+- On service-tier bundles, stopping a running Fast response, editing the queued/resumable message, and resending in the same conversation must not leave the request tier locked to Standard
 
 ## Plugins
 

@@ -6,6 +6,12 @@ This project follows a simple release-oriented changelog format.
 
 ## [Unreleased]
 
+## [0.34.1] - 2026-06-18
+
+### Fixed
+
+- Fixed service-tier fallback on service-tier bundles so stale latest-turn `params.serviceTier` from stop/edit/resend flows no longer forces a Fast conversation back to Standard or locks the current conversation speed until restart.
+
 ## [0.34.0] - 2026-06-18
 
 ### Added
