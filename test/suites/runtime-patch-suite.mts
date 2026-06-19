@@ -58,6 +58,12 @@ export function runRuntimePatchSuite(): void {
   assertNotContains(intelligenceSpeed26601Result.content, "_&&m.availableOptions", "expected 26.601 Intelligence Speed patch to remove the Fast availability guard");
   assertContains(intelligenceSpeed26601Result.patchedLabels.join("\n"), "Composer Intelligence Speed menu", "expected 26.601 Intelligence Speed patch to report the Speed menu target");
 
+  const intelligenceSpeed26616Body = "composer.openModelPicker;let L=F?I:zl,R,ee,z,B,te;if(t[18]!==d?.models||t[19]!==m.model||t[20]!==_.availableOptions||t[21]!==_.selectedServiceTier){ee=Er(d?.models,m.model),z=_.selectedServiceTier;let e;if(t[27]!==z||t[28]!==_.availableOptions){let n;t[30]===z?n=t[31]:(n=e=>e.value===z,t[30]=z,t[31]=n),e=_.availableOptions.find(n),t[27]=z,t[28]=_.availableOptions,t[29]=e}else e=t[29];let n=e,r;t[32]===_.availableOptions?r=t[33]:(r=_.availableOptions.find(Nh)?.value,t[32]=_.availableOptions,t[33]=r),R=r,B=n?.iconKind??null,te=B!=null&&G(ee,z),t[18]=d?.models,t[19]=m.model,t[20]=_.availableOptions,t[21]=_.selectedServiceTier,t[22]=R,t[23]=ee,t[24]=z,t[25]=B,t[26]=te}else R=t[22],ee=t[23],z=t[24],B=t[25],te=t[26];let ne=te,re=b&&_.availableOptions.length>1,V=a(Eo,`composer.openModelPicker`),ie=(0,Z.useRef)(!1);";
+  const intelligenceSpeed26616Result = applyRuntimePatchesToBody("webview/assets/composer-26616.js", intelligenceSpeed26616Body);
+  assertContains(intelligenceSpeed26616Result.content, "re=_.availableOptions.length>1,V=", "expected 26.616 Intelligence Speed patch to preserve the option-count guard when locale ids live in a separate asset");
+  assertNotContains(intelligenceSpeed26616Result.content, "re=b&&_.availableOptions", "expected 26.616 Intelligence Speed patch to remove the Fast availability guard");
+  assertContains(intelligenceSpeed26616Result.patchedLabels.join("\n"), "Composer Intelligence Speed menu", "expected 26.616 Intelligence Speed patch to report the Speed menu target");
+
   const pluginsAccess26519Body = "sidebarElectron.pluginsDisabledTooltip;function wb(){let e,n,{authMethod:c}=Ba(),l=Li(`533078438`),u=Cc(c),d=e&&l&&u,f=bs({hostId:Tt}),p=e&&f&&!u,m=gc();}";
   const pluginsAccess26519Result = applyRuntimePatchesToBody("webview/assets/app-main-26519.js", pluginsAccess26519Body);
   assertContains(pluginsAccess26519Result.content, "d=!1,f=bs({hostId:Tt}),p=e&&f", "expected 26.519 Plugins sidebar patch to disable the API-key gate and keep the host capability gate");

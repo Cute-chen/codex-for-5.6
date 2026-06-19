@@ -6,6 +6,16 @@ This project follows a simple release-oriented changelog format.
 
 ## [Unreleased]
 
+## [0.35.0] - 2026-06-19
+
+### Added
+
+- Added support for `Codex.app` `26.616.31447` (`build 4133`) after direct installed-bundle inspection confirmed the current Fast, `/fast`, and Plugins catalog target family still applies with renamed assets.
+
+### Fixed
+
+- Fixed the composer `Intelligence` Speed menu target for builds where locale message ids are split out of the composer asset by matching the code-level `composer.openModelPicker` path.
+
 ## [0.34.1] - 2026-06-18
 
 ### Fixed

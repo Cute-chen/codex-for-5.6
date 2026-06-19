@@ -5,6 +5,7 @@ const SPEED_SLASH_COMMAND_NEEDLE = "composer.speedSlashCommand.title";
 const SPEED_SLASH_COMMAND_DISABLE_NEEDLE = "composer.speedSlashCommand.disableDescription";
 const ADD_CONTEXT_SPEED_NEEDLE = "composer.addContext.speed.option.fast.description";
 const INTELLIGENCE_SPEED_NEEDLE = "composer.intelligenceDropdown.speed.title";
+const INTELLIGENCE_SPEED_CODE_NEEDLE = "composer.openModelPicker";
 const SERVICE_TIER_ALLOWANCE_NEEDLE = "featureRequirements?.fast_mode";
 const GUARDED_SIGNATURE_WITH_OPTION_COUNT =
   /([A-Za-z_$][\w$]*)=((?:_e|ae|P|N|de|ie|se|xe|je)\(\),)(\{serviceTierSettings:([A-Za-z_$][\w$]*),setServiceTier:[^}]+\}=(?:Ce|se|be|xe|ye|Ve|de|fe|_e)\(\);)if\(!\1\|\|\4\.availableOptions\.length<=1\)return null;/;
@@ -212,6 +213,14 @@ export const SPEED_TARGET_SPECS = defineTargetSpecs(
     id: "intelligence-speed-menu-options-boolean",
     label: "Composer Intelligence Speed menu",
     needle: INTELLIGENCE_SPEED_NEEDLE,
+    guardedSignature: INTELLIGENCE_SPEED_GUARDED_SIGNATURE_OPTIONS_BOOLEAN,
+    patchedSignature: INTELLIGENCE_SPEED_PATCHED_SIGNATURE_OPTIONS_BOOLEAN,
+    applyReplacement: "$1$2=$4.availableOptions.length>1,",
+  },
+  {
+    id: "intelligence-speed-menu-options-boolean-code",
+    label: "Composer Intelligence Speed menu",
+    needle: INTELLIGENCE_SPEED_CODE_NEEDLE,
     guardedSignature: INTELLIGENCE_SPEED_GUARDED_SIGNATURE_OPTIONS_BOOLEAN,
     patchedSignature: INTELLIGENCE_SPEED_PATCHED_SIGNATURE_OPTIONS_BOOLEAN,
     applyReplacement: "$1$2=$4.availableOptions.length>1,",
