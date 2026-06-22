@@ -137,6 +137,16 @@ export function runRuntimePatchSuite(): void {
   );
   assertContains(
     generalSettingsResult.content,
+    "defaultMessage:`Stop future background update checks without disabling manual Check for Updates.`",
+    "expected General settings patch to explain the automatic-update setting without restart-specific wording",
+  );
+  assertNotContains(
+    generalSettingsResult.content,
+    "during this codexfast launch",
+    "expected General settings patch to avoid implementation-specific launch wording",
+  );
+  assertContains(
+    generalSettingsResult.content,
     "B(t,j.disableAutomaticUpdates,e)",
     "expected General settings patch to persist the disable automatic updates setting",
   );

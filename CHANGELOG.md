@@ -6,6 +6,10 @@ This project follows a simple release-oriented changelog format.
 
 ## [Unreleased]
 
+### Changed
+
+- Refined the Settings > General `Disable automatic updates` description to avoid restart- or launcher-specific wording.
+
 ## [0.37.1] - 2026-06-22
 
 ### Fixed
