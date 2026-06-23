@@ -90,7 +90,7 @@ const PLUGIN_POST_INSTALL_APP_CONNECT_FALLBACK_GUARDED_SIGNATURE =
 const PLUGIN_POST_INSTALL_APP_CONNECT_FALLBACK_PATCHED_SIGNATURE =
   /(let )([A-Za-z_$][\w$]*)=await ([A-Za-z_$][\w$]*)\(\{authPolicy:([A-Za-z_$][\w$]*)\.authPolicy,codexHome:([A-Za-z_$][\w$]*),hostId:([A-Za-z_$][\w$]*),plugin:([A-Za-z_$][\w$]*),queryClient:([A-Za-z_$][\w$]*),windowType:`electron`\}\),codexfastAppsNeedingAuth=\4\.appsNeedingAuth\.length>0\?\4\.appsNeedingAuth:\(\7\.plugin\.apps\?\?\[\]\)\.map\([A-Za-z_$][\w$]*=>\(\{appMetadata:null,branding:null,description:[A-Za-z_$][\w$]*\.description\?\?null,distributionChannel:null,id:[A-Za-z_$][\w$]*\.id,installUrl:[A-Za-z_$][\w$]*\.installUrl\?\?null,isAccessible:!1,isEnabled:!1,labels:null,logoUrl:[A-Za-z_$][\w$]*\.logoUrl\?\?null,logoUrlDark:[A-Za-z_$][\w$]*\.logoUrlDark\?\?null,name:[A-Za-z_$][\w$]*\.name\?\?[A-Za-z_$][\w$]*\.displayName\?\?[A-Za-z_$][\w$]*\.id,pluginDisplayNames:\[\]\}\)\);if\(/;
 const PLUGIN_POST_INSTALL_APP_CONNECT_FLOW_GUARDED_SIGNATURE =
-  /(if\([A-Za-z_$][\w$]*\([A-Za-z_$][\w$]*\),)([A-Za-z_$][\w$]*)\.authPolicy===`ON_USE`\|\|\2\.appsNeedingAuth\.length===0&&([A-Za-z_$][\w$]*)\.length===0(\)\{)/;
+  /(if\([^{};]*,)(?:[A-Za-z_$][\w$]*==null&&)?([A-Za-z_$][\w$]*)\.authPolicy===`ON_USE`\|\|\2\.appsNeedingAuth\.length===0&&([A-Za-z_$][\w$]*)\.length===0(\)\{)/;
 const PLUGIN_POST_INSTALL_APP_CONNECT_FLOW_PATCHED_SIGNATURE =
   /(if\([A-Za-z_$][\w$]*\([A-Za-z_$][\w$]*\),)codexfastAppsNeedingAuth\.length===0&&([A-Za-z_$][\w$]*)\.length===0(\)\{)/;
 const PLUGIN_POST_INSTALL_APP_CONNECT_APPS_GUARDED_SIGNATURE =
@@ -101,6 +101,8 @@ const PLUGIN_POST_INSTALL_APP_CONNECT_AUTO_OPEN_GUARDED_SIGNATURE =
   /(connectingAppId:)([A-Za-z_$][\w$]*)\.authPolicy===`ON_INSTALL`&&\2\.appsNeedingAuth\.length===1&&([A-Za-z_$][\w$]*)\.length===0\?\2\.appsNeedingAuth\[0\]\.id:void 0/;
 const PLUGIN_POST_INSTALL_APP_CONNECT_AUTO_OPEN_PATCHED_SIGNATURE =
   /(connectingAppId:)\(([A-Za-z_$][\w$]*)\.authPolicy===`ON_INSTALL`\|\|\2\.authPolicy===`ON_USE`\)&&codexfastAppsNeedingAuth\.length===1&&([A-Za-z_$][\w$]*)\.length===0\?codexfastAppsNeedingAuth\[0\]\.id:void 0/;
+const PLUGIN_POST_INSTALL_APP_CONNECT_AUTO_OPEN_WITH_CALLBACK_GUARDED_SIGNATURE =
+  /(connectingAppId:)([A-Za-z_$][\w$]*)\.appsNeedingAuth\.length===1&&([A-Za-z_$][\w$]*)\.length===0&&\(\2\.authPolicy===`ON_INSTALL`\|\|[A-Za-z_$][\w$]*!=null\)\?\2\.appsNeedingAuth\[0\]\?\.id:void 0/;
 const COMPOSER_PLUGIN_MENTIONS_GUARDED_SIGNATURE =
   /(additionalMarketplaceKinds:)\[`shared-with-me`\]/;
 const COMPOSER_PLUGIN_MENTIONS_PATCHED_SIGNATURE =
@@ -334,6 +336,15 @@ export const PLUGIN_TARGET_SPECS = defineTargetSpecs(
     label: "Plugin post-install app connect",
     needle: "appsNeedingAuth",
     guardedSignature: PLUGIN_POST_INSTALL_APP_CONNECT_AUTO_OPEN_GUARDED_SIGNATURE,
+    patchedSignature: PLUGIN_POST_INSTALL_APP_CONNECT_AUTO_OPEN_PATCHED_SIGNATURE,
+    applyReplacement:
+      "$1($2.authPolicy===`ON_INSTALL`||$2.authPolicy===`ON_USE`)&&codexfastAppsNeedingAuth.length===1&&$3.length===0?codexfastAppsNeedingAuth[0].id:void 0",
+  },
+  {
+    id: "plugin-post-install-app-connect-auto-open-callback-26616",
+    label: "Plugin post-install app connect",
+    needle: "appsNeedingAuth",
+    guardedSignature: PLUGIN_POST_INSTALL_APP_CONNECT_AUTO_OPEN_WITH_CALLBACK_GUARDED_SIGNATURE,
     patchedSignature: PLUGIN_POST_INSTALL_APP_CONNECT_AUTO_OPEN_PATCHED_SIGNATURE,
     applyReplacement:
       "$1($2.authPolicy===`ON_INSTALL`||$2.authPolicy===`ON_USE`)&&codexfastAppsNeedingAuth.length===1&&$3.length===0?codexfastAppsNeedingAuth[0].id:void 0",

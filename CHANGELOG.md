@@ -6,6 +6,16 @@ This project follows a simple release-oriented changelog format.
 
 ## [Unreleased]
 
+## [0.38.0] - 2026-06-23
+
+### Added
+
+- Added support for `Codex.app` `26.616.71553` (`build 4265`) after direct installed-bundle inspection confirmed the `26.616.51431` Fast, `/fast`, Speed, and Plugins catalog target mapping still applies with renamed assets.
+
+### Fixed
+
+- Updated the `26.616.71553` post-install app-connect target to match the new callback-shaped `ON_USE` close shortcut and single-app auto-open guard.
+
 ### Changed
 
 - Refined the Settings > General `Disable automatic updates` description to avoid restart- or launcher-specific wording.
