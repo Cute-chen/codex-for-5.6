@@ -33,4 +33,5 @@ export const SUPPORTED_APP_VERSIONS: Record<string, string> = {
   "26.616.31447+4133": "Codex.app 26.616.31447 build 4133",
   "26.616.51431+4212": "Codex.app 26.616.51431 build 4212",
   "26.616.71553+4265": "Codex.app 26.616.71553 build 4265",
+  "26.616.81150+4306": "Codex.app 26.616.81150 build 4306",
 };

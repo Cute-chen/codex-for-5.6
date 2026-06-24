@@ -132,13 +132,33 @@ export function runRuntimePatchSuite(): void {
   );
   assertContains(
     generalSettingsResult.content,
-    "defaultMessage:`Disable automatic updates`",
-    "expected General settings patch to add the disable automatic updates label",
+    "label:`Disable automatic updates`",
+    "expected General settings patch to keep an English automatic-update label fallback",
   );
   assertContains(
     generalSettingsResult.content,
-    "defaultMessage:`Stop future background update checks without disabling manual Check for Updates.`",
-    "expected General settings patch to explain the automatic-update setting without restart-specific wording",
+    "description:`Stop future background update checks without disabling manual Check for Updates.`",
+    "expected General settings patch to keep an English automatic-update description fallback without restart-specific wording",
+  );
+  assertContains(
+    generalSettingsResult.content,
+    "codexfastUpdateMessages",
+    "expected General settings patch to choose automatic-update copy from a locale-aware message map",
+  );
+  assertContains(
+    generalSettingsResult.content,
+    "停用自动更新",
+    "expected General settings patch to include Simplified Chinese automatic-update copy",
+  );
+  assertContains(
+    generalSettingsResult.content,
+    "停用自動更新",
+    "expected General settings patch to include Traditional Chinese automatic-update copy",
+  );
+  assertContains(
+    generalSettingsResult.content,
+    "自動更新を無効にする",
+    "expected General settings patch to include Japanese automatic-update copy",
   );
   assertNotContains(
     generalSettingsResult.content,

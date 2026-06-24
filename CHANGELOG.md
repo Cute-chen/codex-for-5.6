@@ -6,6 +6,16 @@ This project follows a simple release-oriented changelog format.
 
 ## [Unreleased]
 
+## [0.39.0] - 2026-06-24
+
+### Added
+
+- Added support for `Codex.app` `26.616.81150` (`build 4306`) after direct installed-bundle inspection confirmed the `26.616.71553` Fast, `/fast`, Speed, and Plugins catalog target mapping still applies.
+
+### Changed
+
+- Made the Settings > General `Disable automatic updates` row use locale-aware label and description copy instead of falling back to English-only text in non-English app locales.
+
 ## [0.38.0] - 2026-06-23
 
 ### Added
