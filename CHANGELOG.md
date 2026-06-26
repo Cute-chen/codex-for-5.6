@@ -6,6 +6,10 @@ This project follows a simple release-oriented changelog format.
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed the Fast conversation fallback matcher so paused/edit/resend flows are patched when the bundle uses nullish `!=null` service-tier checks instead of `!==void 0`, preventing stale turn state from overriding Settings Fast.
+
 ## [0.39.0] - 2026-06-24
 
 ### Added

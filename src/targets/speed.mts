@@ -20,7 +20,7 @@ const SERVICE_TIER_ALLOWANCE_GUARDED_SIGNATURE =
 const SERVICE_TIER_ALLOWANCE_PATCHED_SIGNATURE =
   /(([A-Za-z_$][\w$]*)=[A-Za-z_$][\w$]*\?\.authMethod\?\?null,[A-Za-z_$][\w$]*;[^]*?let\{data:([A-Za-z_$][\w$]*),isPending:([A-Za-z_$][\w$]*)\}=[A-Za-z_$][\w$]*\([A-Za-z_$][\w$]*,[A-Za-z_$][\w$]*\),([A-Za-z_$][\w$]*)=!![A-Za-z_$][\w$]*\?\.isLoading\|\|([A-Za-z_$][\w$]*)&&\4,([A-Za-z_$][\w$]*)=)!\5&&\(\6\?\3!=null&&\3\?\.requirements\?\.featureRequirements\?\.fast_mode!==!1:\2!=null\)(,)/;
 const SERVICE_TIER_CONVERSATION_FALLBACK_GUARDED_SIGNATURE =
-  /(let [^;]+,[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*!=null&&[A-Za-z_$][\w$]*\?\.serviceTier!==void 0\?[^;]+;[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*!=null&&\([A-Za-z_$][\w$]*\?\.serviceTier!==void 0\|\|[A-Za-z_$][\w$]*\?\.params\.serviceTier!==void 0\)\?[^,]+:[A-Za-z_$][\w$]*\([^,]+,[A-Za-z_$][\w$]*,[A-Za-z_$][\w$]*\),)/;
+  /(let [^;]+,[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*!=null&&[A-Za-z_$][\w$]*\?\.serviceTier(?:!==void 0|!=null)\?[^;]+;[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*!=null&&\([A-Za-z_$][\w$]*\?\.serviceTier(?:!==void 0|!=null)\|\|[A-Za-z_$][\w$]*\?\.params\.serviceTier(?:!==void 0|!=null)\)\?[^,]+:[A-Za-z_$][\w$]*\([^,]+,[A-Za-z_$][\w$]*,[A-Za-z_$][\w$]*\),)/;
 const SERVICE_TIER_CONVERSATION_FALLBACK_PATCHED_SIGNATURE =
   /(let [^;]+,[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*\.serviceTier;[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*\([^,]+,[A-Za-z_$][\w$]*,[A-Za-z_$][\w$]*\),)/;
 const GUARDED_SIGNATURE =
