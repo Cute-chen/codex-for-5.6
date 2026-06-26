@@ -9,8 +9,6 @@
 - Settings 里的 **Fast** 控制项
 - 输入框里的 **`/fast`** slash command
 - composer 里的 **Speed** 菜单
-- 仍需要兼容补丁的版本上的 **GPT-5.5** 模型列表显示
-- 仍需要本地 gate 补丁的版本上的 custom API 用户 **Plugins** 入口
 - Settings > General 里的 **Disable automatic updates** 开关
 
 ```bash
@@ -21,9 +19,9 @@ npx codexfast launch
 
 ## 工作方式
 
-`Codex.app` 的前端 bundle 里已经包含 Fast、`/fast`、Speed、模型列表、Plugins 和 updater 相关 UI 路径，但 custom API 用户会被本地 gate 隐藏或禁用。`codexfast` 不新增后端服务，也不调用 OpenAI 私有 API。
+`Codex.app` 的前端 bundle 里已经包含 Fast、`/fast`、Speed 和 updater 相关 UI 路径。`codexfast` 只 patch 已验证 build 上仍然需要的本地 gate。它不新增后端服务，也不调用 OpenAI 私有 API。
 
-`codexfast launch` 会用本地 Chrome DevTools Protocol endpoint 启动 Codex，通过 browser-level CDP target 在 renderer JavaScript 执行前挂载拦截，拦截当前会话里匹配的 renderer JavaScript 响应，并在内存里应用窄范围 patch。使用 Codex 时需要保持 `codexfast launch` 进程运行；Settings 和 Plugins 的部分 chunk 是懒加载的，首次窗口打开后仍然需要 runtime interceptor。
+`codexfast launch` 会用本地 Chrome DevTools Protocol endpoint 启动 Codex，通过 browser-level CDP target 在 renderer JavaScript 执行前挂载拦截，拦截当前会话里匹配的 renderer JavaScript 响应，并在内存里应用窄范围 patch。使用 Codex 时需要保持 `codexfast launch` 进程运行；Settings 和被 patch 的功能 chunk 都可能懒加载，首次窗口打开后仍然需要 runtime interceptor。
 
 Settings > General 里的 `Disable automatic updates` 开关会写入 Codex 配置。`codexfast` 会给当前进程注入 main-process hook，并在每次 Sparkle 后台更新检查前读取最新配置，所以在一次 `codexfast launch` 会话中打开开关后，后续后台检查会被跳过；手动 `Check for Updates` 和安装更新动作仍然可用。注入到 Settings 的这一行会按常见 Codex app 语言显示对应文案。
 
@@ -75,8 +73,6 @@ q) Quit
 
 - `launch` 只允许在白名单里的 version/build 上执行
 - Runtime launch 不会改写 `app.asar`、`Info.plist`、app bundle、备份、app 签名或 macOS 隐私权限
-- GPT-5.5 模型列表补丁只在仍需要兼容补丁的受支持版本上注入 UI catalog 项；你的 custom API provider 仍然必须支持 `gpt-5.5`
-- Plugins patch 只在仍需要本地补丁的版本上移除已知 custom API gate。`26.623.31443`（`build 4441`）已经走官方 Plugins 支持路径，codexfast 会跳过 Plugins runtime targets；具体 plugin 行为仍可能受 plugin 状态、connector runtime 或管理员限制影响
 - 自动更新开关会在当前 `codexfast launch` 会话中禁用后续后台更新检查；手动更新检查仍然可用
 
 ## 排查
@@ -85,17 +81,11 @@ q) Quit
 
 **Runtime launch 显示 `Codex failed to start` / `ERR_FAILED`** - 完全退出 Codex，然后重新运行最新的 `npx codexfast launch`。失败的 runtime launch 不应该修改 `app.asar`、`Info.plist`、app bundle、备份、app 签名或 macOS 隐私权限。
 
-**`launch` 后 Settings Fast 或 Plugins 内容仍然缺失** - 确认 `codexfast launch` 终端进程仍在运行。关闭它会结束 CDP interception，后续懒加载的 Settings 和 Plugins chunk 就无法继续被 patch。
+**`launch` 后 Settings Fast 或被 patch 的功能仍然缺失** - 确认 `codexfast launch` 终端进程仍在运行。关闭它会结束 CDP interception，后续懒加载的 chunk 就无法继续被 patch。
 
 **修改开关后仍出现一次自动更新检查** - updater 可能在打开 Settings 页面前已经触发一次启动/后台检查，已经开始的检查无法撤回。打开开关后，同一次 `codexfast launch` 会话里的后续后台检查会被跳过。
 
 **出现 `Runtime patch session lost after reconnect attempts`** - Codex 会继续运行，但该 launch 进程无法继续 patch 后续懒加载 chunk。需要新的 patched session 时，完全退出 Codex，然后重新运行 `npx codexfast launch`。
-
-**Plugins 可见但某个具体 plugin 仍不可用** - codexfast 只移除已知本地 custom API gate。剩余失败通常来自 plugin 状态、connector runtime 或管理员限制。
-
-**Plugins 可见但 Gmail 等 app-connect plugin 缺失** - 新版 Codex 的默认 API catalog 可能比本地完整 curated catalog 更少。请使用最新版 codexfast，并通过 `codexfast launch` 重新启动，让脚本把本地完整 plugin cache 加入 catalog 查询。
-
-**GPT-5.5 可见但请求失败** - UI entry 已存在，但你的 custom API provider 仍需要接受 `model: "gpt-5.5"`。
 
 **以前安装过 auto-repair watcher** - 执行一次 `npx codexfast launch`。launcher 会在启动 Codex 前移除 `~/Library/LaunchAgents/com.codexfast.watcher.plist` 和旧的本地 watcher runtime。
 
