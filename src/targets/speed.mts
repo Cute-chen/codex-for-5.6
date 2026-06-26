@@ -7,6 +7,7 @@ const ADD_CONTEXT_SPEED_NEEDLE = "composer.addContext.speed.option.fast.descript
 const INTELLIGENCE_SPEED_NEEDLE = "composer.intelligenceDropdown.speed.title";
 const INTELLIGENCE_SPEED_CODE_NEEDLE = "composer.openModelPicker";
 const SERVICE_TIER_ALLOWANCE_NEEDLE = "featureRequirements?.fast_mode";
+const SERVICE_TIER_REQUEST_ALLOWANCE_NEEDLE = "Failed to read service tier for request";
 const GUARDED_SIGNATURE_WITH_OPTION_COUNT =
   /([A-Za-z_$][\w$]*)=((?:_e|ae|P|N|de|ie|se|xe|je)\(\),)(\{serviceTierSettings:([A-Za-z_$][\w$]*),setServiceTier:[^}]+\}=(?:Ce|se|be|xe|ye|Ve|de|fe|_e)\(\);)if\(!\1\|\|\4\.availableOptions\.length<=1\)return null;/;
 const PATCHED_SIGNATURE_WITH_OPTION_COUNT =
@@ -19,10 +20,14 @@ const SERVICE_TIER_ALLOWANCE_GUARDED_SIGNATURE =
   /(([A-Za-z_$][\w$]*)=[A-Za-z_$][\w$]*\?\.authMethod\?\?null,[A-Za-z_$][\w$]*;[^]*?let\{data:([A-Za-z_$][\w$]*),isPending:([A-Za-z_$][\w$]*)\}=[A-Za-z_$][\w$]*\([A-Za-z_$][\w$]*,[A-Za-z_$][\w$]*\),([A-Za-z_$][\w$]*)=!![A-Za-z_$][\w$]*\?\.isLoading\|\|([A-Za-z_$][\w$]*)&&\4,([A-Za-z_$][\w$]*)=)\6&&!\5&&\3!=null&&\3\?\.requirements\?\.featureRequirements\?\.fast_mode!==!1(,)/;
 const SERVICE_TIER_ALLOWANCE_PATCHED_SIGNATURE =
   /(([A-Za-z_$][\w$]*)=[A-Za-z_$][\w$]*\?\.authMethod\?\?null,[A-Za-z_$][\w$]*;[^]*?let\{data:([A-Za-z_$][\w$]*),isPending:([A-Za-z_$][\w$]*)\}=[A-Za-z_$][\w$]*\([A-Za-z_$][\w$]*,[A-Za-z_$][\w$]*\),([A-Za-z_$][\w$]*)=!![A-Za-z_$][\w$]*\?\.isLoading\|\|([A-Za-z_$][\w$]*)&&\4,([A-Za-z_$][\w$]*)=)!\5&&\(\6\?\3!=null&&\3\?\.requirements\?\.featureRequirements\?\.fast_mode!==!1:\2!=null\)(,)/;
+const SERVICE_TIER_REQUEST_ALLOWANCE_GUARDED_SIGNATURE =
+  /(async function [A-Za-z_$][\w$]*\(([A-Za-z_$][\w$]*),([A-Za-z_$][\w$]*)\)\{let ([A-Za-z_$][\w$]*)=await [A-Za-z_$][\w$]*\(\2,\3\);return \4===`chatgpt`\?\(await \2\.query\.fetch\([A-Za-z_$][\w$]*,\{authMethod:\4,hostId:\3\}\)\)\.requirements\?\.featureRequirements\?\.fast_mode!==!1:)!1(\})/;
+const SERVICE_TIER_REQUEST_ALLOWANCE_PATCHED_SIGNATURE =
+  /(async function [A-Za-z_$][\w$]*\(([A-Za-z_$][\w$]*),([A-Za-z_$][\w$]*)\)\{let ([A-Za-z_$][\w$]*)=await [A-Za-z_$][\w$]*\(\2,\3\);return \4===`chatgpt`\?\(await \2\.query\.fetch\([A-Za-z_$][\w$]*,\{authMethod:\4,hostId:\3\}\)\)\.requirements\?\.featureRequirements\?\.fast_mode!==!1:)\4!=null(\})/;
 const SERVICE_TIER_CONVERSATION_FALLBACK_GUARDED_SIGNATURE =
   /(let [^;]+,[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*!=null&&[A-Za-z_$][\w$]*\?\.serviceTier(?:!==void 0|!=null)\?[^;]+;[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*!=null&&\([A-Za-z_$][\w$]*\?\.serviceTier(?:!==void 0|!=null)\|\|[A-Za-z_$][\w$]*\?\.params\.serviceTier(?:!==void 0|!=null)\)\?[^,]+:[A-Za-z_$][\w$]*\([^,]+,[A-Za-z_$][\w$]*,[A-Za-z_$][\w$]*\),)/;
 const SERVICE_TIER_CONVERSATION_FALLBACK_PATCHED_SIGNATURE =
-  /(let [^;]+,[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*\.serviceTier;[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*\([^,]+,[A-Za-z_$][\w$]*,[A-Za-z_$][\w$]*\),)/;
+  /(let [^;]+,[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*!=null&&[A-Za-z_$][\w$]*\?\.serviceTier!=null&&[A-Za-z_$][\w$]*\.serviceTier!==`standard`\?[A-Za-z_$][\w$]*\.serviceTier:[A-Za-z_$][\w$]*\.serviceTier;[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*\([^,]+,[A-Za-z_$][\w$]*,[A-Za-z_$][\w$]*\),)/;
 const GUARDED_SIGNATURE =
   /([A-Za-z_$][\w$]*)=((?:_e|ae|P|N|de|ie|se|je)\(\),)(\{serviceTierSettings:[^,}]+,setServiceTier:[^}]+\}=(?:Ce|se|be|xe|ye|Ve|de|fe|_e)\(\);)if\(!\1\)return null;/;
 const PATCHED_SIGNATURE =
@@ -105,7 +110,13 @@ function patchConversationServiceTierFallback(match: string): string {
   return match
     .replace(
       /[A-Za-z_$][\w$]*!=null&&([A-Za-z_$][\w$]*)\?\.serviceTier(?:!==void 0|!=null)\?\1\.serviceTier:/,
-      "",
+      (serviceTierBranch, serviceTierSource) =>
+        serviceTierBranch
+          .replace(/!==void 0/g, "!=null")
+          .replace(
+            `${serviceTierSource}?.serviceTier!=null?`,
+            `${serviceTierSource}?.serviceTier!=null&&${serviceTierSource}.serviceTier!==\`standard\`?`,
+          ),
     )
     .replace(
       /[A-Za-z_$][\w$]*!=null&&([A-Za-z_$][\w$]*)\?\.params\.serviceTier(?:!==void 0|!=null)\?\1\.params\.serviceTier:/,
@@ -142,6 +153,14 @@ export const SPEED_TARGET_SPECS = defineTargetSpecs(
     patchedSignature: SERVICE_TIER_ALLOWANCE_PATCHED_SIGNATURE,
     applyReplacement:
       "$1!$5&&($6?$3!=null&&$3?.requirements?.featureRequirements?.fast_mode!==!1:$2!=null)$8",
+  },
+  {
+    id: "speed-service-tier-request-allowance-26623",
+    label: "Speed service tier request allowance",
+    needle: SERVICE_TIER_REQUEST_ALLOWANCE_NEEDLE,
+    guardedSignature: SERVICE_TIER_REQUEST_ALLOWANCE_GUARDED_SIGNATURE,
+    patchedSignature: SERVICE_TIER_REQUEST_ALLOWANCE_PATCHED_SIGNATURE,
+    applyReplacement: "$1$4!=null$5",
   },
   {
     id: "speed-service-tier-conversation-fallback-26601",

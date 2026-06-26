@@ -18,7 +18,8 @@ Use it when you need a quick answer to "what does this repo actually enable?" be
 - Exposes the Fast-related control in Codex Settings on supported builds.
 - This is the Settings/UI path for the Fast feature set.
 - On newer service-tier bundles, `codexfast` also patches the shared service-tier allowance hook so custom API users can actually persist and send the selected Fast tier instead of only seeing the UI entry.
-- On newer service-tier bundles, reopened conversations and paused/edited resends fall back to the configured Settings tier instead of letting stale conversation-level or latest-turn service-tier state force Standard.
+- On newer service-tier bundles, `codexfast` also patches the request service-tier helper so send/edit/resume paths that bypass the shared hook can still compute and send Fast for non-ChatGPT auth methods.
+- On newer service-tier bundles, reopened conversations and paused/edited resends keep explicit non-standard next-turn Fast selections while falling back to the configured Settings tier when stale Standard/null conversation-level or latest-turn service-tier state would otherwise force Standard.
 
 ### Composer `/fast` slash command
 

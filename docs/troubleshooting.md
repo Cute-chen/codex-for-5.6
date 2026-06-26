@@ -29,8 +29,8 @@ If Settings Fast or Plugins content is still missing after launch:
 If a Fast conversation falls back to Standard after stopping, editing, and resending:
 
 1. Inspect the shared service-tier hook in `use-service-tier-settings-*.js`.
-2. Confirm `serviceTierForRequest` is not giving stale `latestThreadSettings.serviceTier` or latest-turn `params.serviceTier` priority over the configured Settings tier.
-3. Confirm the composer submit path passes the patched `serviceTierForRequest` value into the follow-up or restore request.
+2. Confirm `serviceTierForRequest` preserves explicit non-standard `latestThreadSettings.serviceTier` values, but does not let Standard/null conversation state or latest-turn `params.serviceTier` override the configured Settings tier.
+3. Confirm send/edit/resume paths that compute `serviceTier` through the request helper do not block non-ChatGPT auth methods with the original `fast_mode`-only gate, especially after changing reasoning effort before resending.
 
 If launch reports `Runtime patch session lost after 3 reconnect attempts`:
 

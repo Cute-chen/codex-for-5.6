@@ -6,6 +6,8 @@ This project follows a simple release-oriented changelog format.
 
 ## [Unreleased]
 
+## [0.40.0] - 2026-06-26
+
 ### Added
 
 - Added support for `Codex.app` `26.623.31443` (`build 4441`) after direct installed-bundle inspection confirmed the Fast, `/fast`, Speed, and automatic-update target family still applies with renamed assets and an updated General settings row shape.
@@ -17,6 +19,8 @@ This project follows a simple release-oriented changelog format.
 ### Fixed
 
 - Fixed the Fast conversation fallback matcher so paused/edit/resend flows are patched when the bundle uses nullish `!=null` service-tier checks instead of `!==void 0`, preventing stale turn state from overriding Settings Fast.
+- Fixed the Fast request-tier fallback so explicit non-standard next-turn Fast selections are preserved after stop/edit/resend flows, including when reasoning effort is changed before resending, while stale Standard conversation state and latest-turn service-tier params are still ignored.
+- Fixed the Fast request service-tier helper so non-ChatGPT auth methods can still compute and send the configured Fast tier on send/edit/resume paths that bypass the shared `serviceTierForRequest` hook.
 
 ## [0.39.0] - 2026-06-24
 
