@@ -98,7 +98,17 @@ const runtimePatchNoPluginsAccessRequiredVersionKeys = new Set([
   "26.616.51431+4212",
   "26.616.71553+4265",
   "26.616.81150+4306",
+  "26.623.31443+4441",
 ]);
+const runtimePatchNoPluginTargetsVersionKeys = new Set([
+  "26.623.31443+4441",
+]);
+const runtimePatchPluginTargetIdPrefixes = [
+  "plugin",
+  "plugins",
+  "composer-plugin",
+  "shared-plugin",
+];
 const runtimePatchRequiredInitialReloadMaxAttempts = 1;
 
 function checkCodexRunning(): CodexRunningCheck {
@@ -331,6 +341,50 @@ function runtimePatchRequiredInitialLabelsForVersion(
     return [];
   }
   return runtimePatchDefaultRequiredInitialLabels;
+}
+
+export function runtimePatcherSourceForVersion(
+  patcherSource: string,
+  versionKey: string,
+): string {
+  if (!runtimePatchNoPluginTargetsVersionKeys.has(versionKey)) {
+    return patcherSource;
+  }
+
+  const skippedPrefixes = JSON.stringify(runtimePatchPluginTargetIdPrefixes);
+  return `${patcherSource}
+const __codexfastPluginTargetIdPrefixes = ${skippedPrefixes};
+const __codexfastShouldSkipTarget = (spec) => __codexfastPluginTargetIdPrefixes.some((prefix) => spec.id.startsWith(prefix));
+applyRuntimePatchesToBody = function(_resourcePath, body) {
+  let content = body;
+  const matchedLabels = [];
+  const patchedLabels = [];
+  const alreadyPatchedLabels = [];
+  for (const spec of TARGET_SPECS) {
+    if (__codexfastShouldSkipTarget(spec)) {
+      continue;
+    }
+    const match = inspectSpec(content, spec);
+    if (!match) {
+      continue;
+    }
+    matchedLabels.push(spec.label);
+    if (match.guarded) {
+      content = replaceContent(content, spec.guardedSignature, spec.applyReplacement);
+      patchedLabels.push(spec.label);
+      continue;
+    }
+    if (match.legacyPatched) {
+      content = replaceContentOrThrow(content, spec.legacyPatchedSignature, spec.normalizeReplacement, spec.label);
+      patchedLabels.push(spec.label);
+      continue;
+    }
+    if (match.patched) {
+      alreadyPatchedLabels.push(spec.label);
+    }
+  }
+  return { content, matchedLabels, patchedLabels, alreadyPatchedLabels };
+};`;
 }
 
 async function enableRuntimePatchInterception(
@@ -895,7 +949,10 @@ export async function runRuntimeLaunch(
     const childExit = waitForRuntimeLaunchProcessExit(child);
     session = await waitForRuntimePatchSession(
       debugPort,
-      patcherSource,
+      runtimePatcherSourceForVersion(
+        patcherSource,
+        context.metadata.versionKey,
+      ),
       runtimePatchRequiredInitialLabelsForVersion(context.metadata.versionKey),
     );
     printRuntimeLaunchReady(session.patchedLabels);

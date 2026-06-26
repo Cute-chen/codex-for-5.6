@@ -6,6 +6,14 @@ This project follows a simple release-oriented changelog format.
 
 ## [Unreleased]
 
+### Added
+
+- Added support for `Codex.app` `26.623.31443` (`build 4441`) after direct installed-bundle inspection confirmed the Fast, `/fast`, Speed, and automatic-update target family still applies with renamed assets and an updated General settings row shape.
+
+### Changed
+
+- Skipped Plugins runtime targets for `26.623.31443` (`build 4441`) because the latest app supports Plugins through the official app path.
+
 ### Fixed
 
 - Fixed the Fast conversation fallback matcher so paused/edit/resend flows are patched when the bundle uses nullish `!=null` service-tier checks instead of `!==void 0`, preventing stale turn state from overriding Settings Fast.
