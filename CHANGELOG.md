@@ -16,6 +16,7 @@ This project follows a simple release-oriented changelog format.
 
 ### Fixed
 
+- Fixed the `26.623.42026` Settings > General patch so its generated local variables no longer shadow minified settings namespaces such as `l`, preventing the Settings page from crashing when the automatic-update row is injected.
 - Made the `26.623` Settings > General automatic-update row target tolerate another minified local-name collision while still injecting the `Disable automatic updates` switch.
 - Fixed a `Disable automatic updates` bypass where the Sparkle automatic background download gate could still call the raw background update check after renderer gate changes, while preserving manual `Check for Updates` and update install actions.
 

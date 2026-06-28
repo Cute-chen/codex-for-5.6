@@ -285,6 +285,11 @@ export function runRuntimePatchSuite(): void {
     "z(t,l.disableAutomaticUpdates,e)",
     "expected 26.623 General settings patch to tolerate minified local-name collisions",
   );
+  assertNotContains(
+    generalSettings26623LocalCollisionResult.content,
+    "let c=a??!1,l;",
+    "expected 26.623 General settings patch not to shadow the minified settings namespace when it is named l",
+  );
   assertContains(
     generalSettings26623LocalCollisionResult.patchedLabels.join("\n"),
     "Disable automatic updates setting",
