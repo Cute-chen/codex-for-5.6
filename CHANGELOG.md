@@ -6,6 +6,18 @@ This project follows a simple release-oriented changelog format.
 
 ## [Unreleased]
 
+### Added
+
+- Added support for `Codex.app` `26.623.42026` (`build 4514`) after direct installed-bundle inspection confirmed the current 26.623 Fast, `/fast`, Speed, and official Plugins support scope still applies.
+
+### Changed
+
+- Skipped Plugins runtime targets for `26.623.42026` (`build 4514`) because Plugins remains supported through the official app path.
+
+### Fixed
+
+- Made the `26.623` Settings > General automatic-update row target tolerate another minified local-name collision while still injecting the `Disable automatic updates` switch.
+
 ## [0.41.0] - 2026-06-26
 
 ### Added

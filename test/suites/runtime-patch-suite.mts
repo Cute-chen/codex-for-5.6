@@ -255,6 +255,23 @@ export function runRuntimePatchSuite(): void {
     "expected renamed 26.623 General settings patch to report its target",
   );
 
+  const generalSettings26623LocalCollisionBody =
+    "function La(){let e=(0,Q.c)(10),t=c(H),{platform:n}=Ze(),r=n!==`windows`,i=B(),a=R(l.preventSleepWhileRunning);if(!r)return null;let o,s;e[0]===Symbol.for(`react.memo_cache_sentinel`)?(o=(0,$.jsx)(V,{...W.preventSleepWhileRunning}),s=(0,$.jsx)(V,{id:`settings.general.power.preventSleepWhileRunning.description`,defaultMessage:`Keep your computer awake while Codex is running a chat`,description:`Description for preventing sleep while a chat runs`}),e[0]=o,e[1]=s):(o=e[0],s=e[1]);let u=a??!1,d;e[2]===t?d=e[3]:(d=e=>{z(t,l.preventSleepWhileRunning,e)},e[2]=t,e[3]=d);let f;e[4]===i?f=e[5]:(f=i.formatMessage(W.preventSleepWhileRunning),e[4]=i,e[5]=f);let p;return e[6]!==u||e[7]!==d||e[8]!==f?(p=(0,$.jsx)(L,{label:o,description:s,control:(0,$.jsx)(qt,{checked:u,onChange:d,ariaLabel:f})}),e[6]=u,e[7]=d,e[8]=f,e[9]=p):p=e[9],p}settings.general.power.preventSleepWhileRunning.description";
+  const generalSettings26623LocalCollisionResult = applyRuntimePatchesToBody(
+    "webview/assets/general-settings-26623-local-collision.js",
+    generalSettings26623LocalCollisionBody,
+  );
+  assertContains(
+    generalSettings26623LocalCollisionResult.content,
+    "z(t,l.disableAutomaticUpdates,e)",
+    "expected 26.623 General settings patch to tolerate minified local-name collisions",
+  );
+  assertContains(
+    generalSettings26623LocalCollisionResult.patchedLabels.join("\n"),
+    "Disable automatic updates setting",
+    "expected local-collision 26.623 General settings patch to report its target",
+  );
+
   const speedBody = "settings.agent.speed.label;n=se(),{serviceTierSettings:r,setServiceTier:i}=fe();if(!n)return null;let o;";
   const speedResult = applyRuntimePatchesToBody("webview/assets/general-settings-demo.js", speedBody);
   assertContains(speedResult.content, "{serviceTierSettings:r,setServiceTier:i}=fe();let o;", "expected runtime patch engine to keep patching matching Speed settings bodies");
