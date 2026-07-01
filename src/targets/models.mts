@@ -9,9 +9,9 @@ const GPT_55_MODEL_ENTRY =
 const MODEL_LIST_GUARDED_SIGNATURE =
   /("list-models-for-host":i9\()\(([A-Za-z_$][\w$]*),\{hostId:([A-Za-z_$][\w$]*),\.\.\.([A-Za-z_$][\w$]*)\}\)=>\2\.sendRequest\(`model\/list`,\4\)(\))/;
 const MODEL_LIST_PATCHED_SIGNATURE =
-  /("list-models-for-host":(?:i9|n9)\()async\([^]*?\)=>\/\*codexfast-gpt55\*\/\{let [A-Za-z_$][\w$]*=await [A-Za-z_$][\w$]*\.sendRequest\(`model\/list`,[A-Za-z_$][\w$]*\);return Array\.isArray\([A-Za-z_$][\w$]*\.data\)\?\{[^]*?serviceTiers:Array\.isArray\(e\.serviceTiers\)&&e\.serviceTiers\.length>0\?e\.serviceTiers:\[\{id:`priority`,name:`Fast`,description:`1\.5x speed, increased usage`\}\][^]*?isDefault:!1\}[^]*?\}:[A-Za-z_$][\w$]*\}(\))/;
+  /("list-models-for-host":[A-Za-z_$][\w$]*\()async\([^]*?\)=>\/\*codexfast-gpt55\*\/\{let [A-Za-z_$][\w$]*=await [A-Za-z_$][\w$]*\.sendRequest\(`model\/list`,[A-Za-z_$][\w$]*\);return Array\.isArray\([A-Za-z_$][\w$]*\.data\)\?\{[^]*?serviceTiers:Array\.isArray\(e\.serviceTiers\)&&e\.serviceTiers\.length>0\?e\.serviceTiers:\[\{id:`priority`,name:`Fast`,description:`1\.5x speed, increased usage`\}\][^]*?isDefault:!1\}[^]*?\}:[A-Za-z_$][\w$]*\}(\))/;
 const MODEL_LIST_SIMPLE_GUARDED_SIGNATURE =
-  /("list-models-for-host":n9\()\(([A-Za-z_$][\w$]*),([A-Za-z_$][\w$]*)\)=>\2\.sendRequest\(`model\/list`,\3\)(\))/;
+  /("list-models-for-host":[A-Za-z_$][\w$]*\()\(([A-Za-z_$][\w$]*),([A-Za-z_$][\w$]*)\)=>\2\.sendRequest\(`model\/list`,\3\)(\))/;
 const MODEL_QUERY_GUARDED_SIGNATURE =
   /(\}\}\),)([A-Za-z_$][\w$]*)\?\?=([A-Za-z_$][\w$]*)\.models\.find\(e=>e\.model===([A-Za-z_$][\w$]*)\.defaultModel\)\?\?null,\{modelsByType:\3,defaultModel:\2\}/;
 const MODEL_QUERY_PATCHED_SIGNATURE =

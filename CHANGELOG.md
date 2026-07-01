@@ -6,6 +6,20 @@ This project follows a simple release-oriented changelog format.
 
 ## [Unreleased]
 
+## [0.45.0] - 2026-07-01
+
+### Added
+
+- Added support for `Codex.app` `26.623.81905` (`build 4598`) after direct installed-bundle inspection confirmed the current 26.623 Fast, `/fast`, Speed, GPT-5.5 model-list, automatic-update schema, and official Plugins support scope still applies.
+
+### Changed
+
+- Skipped Plugins runtime targets for `26.623.81905` (`build 4598`) because Plugins remains supported through the official app path.
+
+### Fixed
+
+- Made the `26.623` Settings > General automatic-update row target tolerate the new hook-based row shape in `26.623.81905` while still injecting the `Disable automatic updates` switch with `codexfast*` locals.
+
 ## [0.44.1] - 2026-07-01
 
 ### Fixed

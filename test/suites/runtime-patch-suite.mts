@@ -350,6 +350,33 @@ export function runRuntimePatchSuite(): void {
     "expected settings-arg-collision 26.623 General settings patch to report its target",
   );
 
+  const generalSettings2662381905Body =
+    "function La(){let e=(0,Q.c)(10),t=B(j),{platform:n}=nt(),i=n!==`windows`,a=H(),o=r(p.preventSleepWhileRunning);if(!i)return null;let s,c;e[0]===Symbol.for(`react.memo_cache_sentinel`)?(s=(0,$.jsx)(D,{...W.preventSleepWhileRunning}),c=(0,$.jsx)(D,{id:`settings.general.power.preventSleepWhileRunning.description`,defaultMessage:`Keep your computer awake while Codex is running a chat`,description:`Description for preventing sleep while a chat runs`}),e[0]=s,e[1]=c):(s=e[0],c=e[1]);let l=o??!1,u;e[2]===t?u=e[3]:(u=e=>{V(t,p.preventSleepWhileRunning,e)},e[2]=t,e[3]=u);let d;e[4]===a?d=e[5]:(d=a.formatMessage(W.preventSleepWhileRunning),e[4]=a,e[5]=d);let f;return e[6]!==l||e[7]!==u||e[8]!==d?(f=(0,$.jsx)(U,{label:s,description:c,control:(0,$.jsx)(ye,{checked:l,onChange:u,ariaLabel:d})}),e[6]=l,e[7]=u,e[8]=d,e[9]=f):f=e[9],f}settings.general.power.preventSleepWhileRunning.description";
+  const generalSettings2662381905Result = applyRuntimePatchesToBody(
+    "webview/assets/general-settings-26623-81905.js",
+    generalSettings2662381905Body,
+  );
+  assertContains(
+    generalSettings2662381905Result.content,
+    "codexfastSettingsState=B(j)",
+    "expected 26.623.81905 General settings patch to keep reading the hook-based settings state",
+  );
+  assertContains(
+    generalSettings2662381905Result.content,
+    "V(codexfastSettingsState,p.disableAutomaticUpdates,codexfastNextValue)",
+    "expected 26.623.81905 General settings patch to persist disableAutomaticUpdates",
+  );
+  assertNotContains(
+    generalSettings2662381905Result.content,
+    "let l=o??!1,u;",
+    "expected 26.623.81905 General settings patch to replace original minified row locals",
+  );
+  assertContains(
+    generalSettings2662381905Result.patchedLabels.join("\n"),
+    "Disable automatic updates setting",
+    "expected 26.623.81905 General settings patch to report its target",
+  );
+
   const speedBody = "settings.agent.speed.label;n=se(),{serviceTierSettings:r,setServiceTier:i}=fe();if(!n)return null;let o;";
   const speedResult = applyRuntimePatchesToBody("webview/assets/general-settings-demo.js", speedBody);
   assertContains(speedResult.content, "{serviceTierSettings:r,setServiceTier:i}=fe();let o;", "expected runtime patch engine to keep patching matching Speed settings bodies");
@@ -528,6 +555,27 @@ export function runRuntimePatchSuite(): void {
   assertContains(gpt55OfficialModelListResult.content, "additionalSpeedTiers:Array.isArray(e.additionalSpeedTiers)&&e.additionalSpeedTiers.length>0?e.additionalSpeedTiers:[`fast`]", "expected GPT-5.5 model-list patch to preserve or add Fast speed metadata");
   assertContains(gpt55OfficialModelListResult.content, "serviceTiers:Array.isArray(e.serviceTiers)&&e.serviceTiers.length>0?e.serviceTiers:[{id:`priority`,name:`Fast`,description:`1.5x speed, increased usage`}]", "expected GPT-5.5 model-list patch to add the Fast service tier when the official entry lacks it");
   assertContains(gpt55OfficialModelListResult.patchedLabels.join("\n"), "GPT-5.5 model list", "expected GPT-5.5 model-list patch to report its target");
+
+  const gpt55OfficialModelListDollarHandlerBody = "\"list-models-for-host\":$7((e,t)=>e.sendRequest(`model/list`,t));";
+  const gpt55OfficialModelListDollarHandlerResult = applyRuntimePatchesToBody(
+    "webview/assets/automations-page-26623-81905.js",
+    gpt55OfficialModelListDollarHandlerBody,
+  );
+  assertContains(
+    gpt55OfficialModelListDollarHandlerResult.content,
+    "/*codexfast-gpt55*/",
+    "expected GPT-5.5 model-list patch to wrap the current $7 handler shape",
+  );
+  assertContains(
+    gpt55OfficialModelListDollarHandlerResult.content,
+    "serviceTiers:Array.isArray(e.serviceTiers)&&e.serviceTiers.length>0?e.serviceTiers:[{id:`priority`,name:`Fast`,description:`1.5x speed, increased usage`}]",
+    "expected GPT-5.5 model-list patch to add Fast service-tier metadata for the $7 handler shape",
+  );
+  assertContains(
+    gpt55OfficialModelListDollarHandlerResult.patchedLabels.join("\n"),
+    "GPT-5.5 model list",
+    "expected GPT-5.5 model-list patch to report the $7 handler target",
+  );
 
   const versionFilteredPatcherSource = runtimePatcherSourceForVersion(`
 const TARGET_SPECS = [
@@ -766,6 +814,63 @@ function applyRuntimePatchesToBody(_resourcePath, body) {
     versionFilteredResult4559.content,
     "SPEED_ENABLED",
     "expected 26.623.70822 runtime launch to keep non-Plugins runtime targets active",
+  );
+
+  const versionFilteredPatcherSource4598 = runtimePatcherSourceForVersion(`
+const TARGET_SPECS = [
+  {id: "plugins-catalog-visibility-26601", label: "Plugins catalog visibility", needle: "plugin-needle", guardedSignature: /PLUGIN_DISABLED/, patchedSignature: /PLUGIN_ENABLED/, legacyPatchedSignature: null, applyReplacement: "PLUGIN_ENABLED"},
+  {id: "speed-setting", label: "Speed setting", needle: "speed-needle", guardedSignature: /SPEED_DISABLED/, patchedSignature: /SPEED_ENABLED/, legacyPatchedSignature: null, applyReplacement: "SPEED_ENABLED"}
+];
+function replaceContent(content, signature, replacement) {
+  return content.replace(signature, replacement);
+}
+function replaceContentOrThrow(content, signature, replacement) {
+  return replaceContent(content, signature, replacement);
+}
+function inspectSpec(content, spec) {
+  if (!content.includes(spec.needle)) return null;
+  const guarded = spec.guardedSignature.test(content);
+  const patched = spec.patchedSignature.test(content);
+  const legacyPatched = spec.legacyPatchedSignature?.test(content) ?? false;
+  if (!guarded && !patched && !legacyPatched) return null;
+  return {spec, guarded, patched, legacyPatched};
+}
+function applyRuntimePatchesToBody(_resourcePath, body) {
+  let content = body;
+  const matchedLabels = [];
+  const patchedLabels = [];
+  const alreadyPatchedLabels = [];
+  for (const spec of TARGET_SPECS) {
+    const match = inspectSpec(content, spec);
+    if (!match) continue;
+    matchedLabels.push(spec.label);
+    if (match.guarded) {
+      content = replaceContent(content, spec.guardedSignature, spec.applyReplacement);
+      patchedLabels.push(spec.label);
+    } else if (match.patched) {
+      alreadyPatchedLabels.push(spec.label);
+    }
+  }
+  return {content, matchedLabels, patchedLabels, alreadyPatchedLabels};
+}
+`, "26.623.81905+4598");
+  const versionFilteredPatch4598 = new Function(`${versionFilteredPatcherSource4598}\nreturn applyRuntimePatchesToBody;`)() as (resourcePath: string, body: string) => {
+    content: string;
+    patchedLabels: string[];
+  };
+  const versionFilteredResult4598 = versionFilteredPatch4598(
+    "app://-/assets/demo.js",
+    "plugin-needle PLUGIN_DISABLED speed-needle SPEED_DISABLED",
+  );
+  assertContains(
+    versionFilteredResult4598.content,
+    "PLUGIN_DISABLED",
+    "expected 26.623.81905 runtime launch to skip Plugins targets because the official app supports Plugins",
+  );
+  assertContains(
+    versionFilteredResult4598.content,
+    "SPEED_ENABLED",
+    "expected 26.623.81905 runtime launch to keep non-Plugins runtime targets active",
   );
 
   const nativePipeBody = "function dP(){return lP().info(`browser-use native pipe peer authorization enabled`,{safe:{mode:a?`dev`:`packaged`},sensitive:{}}),e=>{let t=fP(e);return t==null?{authorized:!1,reason:`missing-socket-file-descriptor`}:s.authorizeSocketPeer(t,a)}}";
