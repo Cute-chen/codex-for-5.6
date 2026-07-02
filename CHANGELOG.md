@@ -6,6 +6,12 @@ This project follows a simple release-oriented changelog format.
 
 ## [Unreleased]
 
+## [0.45.1] - 2026-07-02
+
+### Fixed
+
+- Fixed Fast selection for custom `model_provider` configs whose Codex account `authMethod` is `null` by allowing non-ChatGPT service-tier allowance and request helper paths without requiring an account auth method, while preserving official ChatGPT `fast_mode` checks.
+
 ## [0.45.0] - 2026-07-01
 
 ### Added

@@ -19,11 +19,11 @@ const PATCHED_SIGNATURE_WITH_DESTRUCTURED_ALLOWED_OPTION_COUNT =
 const SERVICE_TIER_ALLOWANCE_GUARDED_SIGNATURE =
   /(([A-Za-z_$][\w$]*)=[A-Za-z_$][\w$]*\?\.authMethod\?\?null,[A-Za-z_$][\w$]*;[^]*?let\{data:([A-Za-z_$][\w$]*),isPending:([A-Za-z_$][\w$]*)\}=[A-Za-z_$][\w$]*\([A-Za-z_$][\w$]*,[A-Za-z_$][\w$]*\),([A-Za-z_$][\w$]*)=!![A-Za-z_$][\w$]*\?\.isLoading\|\|([A-Za-z_$][\w$]*)&&\4,([A-Za-z_$][\w$]*)=)\6&&!\5&&\3!=null&&\3\?\.requirements\?\.featureRequirements\?\.fast_mode!==!1(,)/;
 const SERVICE_TIER_ALLOWANCE_PATCHED_SIGNATURE =
-  /(([A-Za-z_$][\w$]*)=[A-Za-z_$][\w$]*\?\.authMethod\?\?null,[A-Za-z_$][\w$]*;[^]*?let\{data:([A-Za-z_$][\w$]*),isPending:([A-Za-z_$][\w$]*)\}=[A-Za-z_$][\w$]*\([A-Za-z_$][\w$]*,[A-Za-z_$][\w$]*\),([A-Za-z_$][\w$]*)=!![A-Za-z_$][\w$]*\?\.isLoading\|\|([A-Za-z_$][\w$]*)&&\4,([A-Za-z_$][\w$]*)=)!\5&&\(\6\?\3!=null&&\3\?\.requirements\?\.featureRequirements\?\.fast_mode!==!1:\2!=null\)(,)/;
+  /(([A-Za-z_$][\w$]*)=[A-Za-z_$][\w$]*\?\.authMethod\?\?null,[A-Za-z_$][\w$]*;[^]*?let\{data:([A-Za-z_$][\w$]*),isPending:([A-Za-z_$][\w$]*)\}=[A-Za-z_$][\w$]*\([A-Za-z_$][\w$]*,[A-Za-z_$][\w$]*\),([A-Za-z_$][\w$]*)=!![A-Za-z_$][\w$]*\?\.isLoading\|\|([A-Za-z_$][\w$]*)&&\4,([A-Za-z_$][\w$]*)=)!\5&&\(\6\?\3!=null&&\3\?\.requirements\?\.featureRequirements\?\.fast_mode!==!1:!0\)(,)/;
 const SERVICE_TIER_REQUEST_ALLOWANCE_GUARDED_SIGNATURE =
   /(async function [A-Za-z_$][\w$]*\(([A-Za-z_$][\w$]*),([A-Za-z_$][\w$]*)\)\{let ([A-Za-z_$][\w$]*)=await [A-Za-z_$][\w$]*\(\2,\3\);return \4===`chatgpt`\?\(await \2\.query\.fetch\([A-Za-z_$][\w$]*,\{authMethod:\4,hostId:\3\}\)\)\.requirements\?\.featureRequirements\?\.fast_mode!==!1:)!1(\})/;
 const SERVICE_TIER_REQUEST_ALLOWANCE_PATCHED_SIGNATURE =
-  /(async function [A-Za-z_$][\w$]*\(([A-Za-z_$][\w$]*),([A-Za-z_$][\w$]*)\)\{let ([A-Za-z_$][\w$]*)=await [A-Za-z_$][\w$]*\(\2,\3\);return \4===`chatgpt`\?\(await \2\.query\.fetch\([A-Za-z_$][\w$]*,\{authMethod:\4,hostId:\3\}\)\)\.requirements\?\.featureRequirements\?\.fast_mode!==!1:)\4!=null(\})/;
+  /(async function [A-Za-z_$][\w$]*\(([A-Za-z_$][\w$]*),([A-Za-z_$][\w$]*)\)\{let ([A-Za-z_$][\w$]*)=await [A-Za-z_$][\w$]*\(\2,\3\);return \4===`chatgpt`\?\(await \2\.query\.fetch\([A-Za-z_$][\w$]*,\{authMethod:\4,hostId:\3\}\)\)\.requirements\?\.featureRequirements\?\.fast_mode!==!1:)!0(\})/;
 const SERVICE_TIER_CONVERSATION_FALLBACK_GUARDED_SIGNATURE =
   /(let [^;]+,[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*!=null&&[A-Za-z_$][\w$]*\?\.serviceTier(?:!==void 0|!=null)\?[^;]+;[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*!=null&&\([A-Za-z_$][\w$]*\?\.serviceTier(?:!==void 0|!=null)\|\|[A-Za-z_$][\w$]*\?\.params\.serviceTier(?:!==void 0|!=null)\)\?[^,]+:[A-Za-z_$][\w$]*\([^,]+,[A-Za-z_$][\w$]*,[A-Za-z_$][\w$]*\),)/;
 const SERVICE_TIER_CONVERSATION_FALLBACK_PATCHED_SIGNATURE =
@@ -152,7 +152,7 @@ export const SPEED_TARGET_SPECS = defineTargetSpecs(
     guardedSignature: SERVICE_TIER_ALLOWANCE_GUARDED_SIGNATURE,
     patchedSignature: SERVICE_TIER_ALLOWANCE_PATCHED_SIGNATURE,
     applyReplacement:
-      "$1!$5&&($6?$3!=null&&$3?.requirements?.featureRequirements?.fast_mode!==!1:$2!=null)$8",
+      "$1!$5&&($6?$3!=null&&$3?.requirements?.featureRequirements?.fast_mode!==!1:!0)$8",
   },
   {
     id: "speed-service-tier-request-allowance-26623",
@@ -160,7 +160,7 @@ export const SPEED_TARGET_SPECS = defineTargetSpecs(
     needle: SERVICE_TIER_REQUEST_ALLOWANCE_NEEDLE,
     guardedSignature: SERVICE_TIER_REQUEST_ALLOWANCE_GUARDED_SIGNATURE,
     patchedSignature: SERVICE_TIER_REQUEST_ALLOWANCE_PATCHED_SIGNATURE,
-    applyReplacement: "$1$4!=null$5",
+    applyReplacement: "$1!0$5",
   },
   {
     id: "speed-service-tier-conversation-fallback-26601",

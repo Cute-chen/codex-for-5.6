@@ -402,13 +402,15 @@ export function runRuntimePatchSuite(): void {
 
   const serviceTierAllowance26602Body = "featureRequirements?.fast_mode;function A(e){let t=(0,k.c)(6),n=m(d),r=e?.hostId??n,i=S(r),a=i?.authMethod===`chatgpt`,o=i?.authMethod??null,s;t[0]!==r||t[1]!==o?(s={authMethod:o,hostId:r},t[0]=r,t[1]=o,t[2]=s):s=t[2];let{data:c,isPending:l}=h(x,s),u=!!i?.isLoading||a&&l,f=a&&!u&&c!=null&&c?.requirements?.featureRequirements?.fast_mode!==!1,p;return t[3]!==u||t[4]!==f?(p={isServiceTierAllowed:f,isLoading:u},t[3]=u,t[4]=f,t[5]=p):p=t[5],p}";
   const serviceTierAllowance26602Result = applyRuntimePatchesToBody("webview/assets/use-service-tier-settings-26602.js", serviceTierAllowance26602Body);
-  assertContains(serviceTierAllowance26602Result.content, "f=!u&&(a?c!=null&&c?.requirements?.featureRequirements?.fast_mode!==!1:o!=null)", "expected service tier allowance patch to keep ChatGPT gating and allow non-ChatGPT auth methods");
+  assertContains(serviceTierAllowance26602Result.content, "f=!u&&(a?c!=null&&c?.requirements?.featureRequirements?.fast_mode!==!1:!0)", "expected service tier allowance patch to keep ChatGPT gating and allow custom model_provider configs even when authMethod is null");
+  assertNotContains(serviceTierAllowance26602Result.content, ":o!=null", "expected service tier allowance patch not to require an account auth method for custom model_provider configs");
   assertNotContains(serviceTierAllowance26602Result.content, "f=a&&!u&&c!=null", "expected service tier allowance patch to stop blocking custom API users at the source hook");
   assertContains(serviceTierAllowance26602Result.patchedLabels.join("\n"), "Speed service tier allowance", "expected service tier allowance patch to report its target");
 
   const serviceTierRequestAllowance26623Body = "Failed to read service tier for request;async function ct(e,t){let n=await at(e,t);return n===`chatgpt`?(await e.query.fetch(Se,{authMethod:n,hostId:t})).requirements?.featureRequirements?.fast_mode!==!1:!1}";
   const serviceTierRequestAllowance26623Result = applyRuntimePatchesToBody("webview/assets/service-tier-request-allowance-26623.js", serviceTierRequestAllowance26623Body);
-  assertContains(serviceTierRequestAllowance26623Result.content, "n===`chatgpt`?(await e.query.fetch(Se,{authMethod:n,hostId:t})).requirements?.featureRequirements?.fast_mode!==!1:n!=null", "expected request service tier helper to keep ChatGPT gating while allowing non-ChatGPT auth methods to send Fast");
+  assertContains(serviceTierRequestAllowance26623Result.content, "n===`chatgpt`?(await e.query.fetch(Se,{authMethod:n,hostId:t})).requirements?.featureRequirements?.fast_mode!==!1:!0", "expected request service tier helper to keep ChatGPT gating while allowing custom model_provider configs with null authMethod to send Fast");
+  assertNotContains(serviceTierRequestAllowance26623Result.content, ":n!=null", "expected request service tier helper not to require an account auth method for custom model_provider configs");
   assertNotContains(serviceTierRequestAllowance26623Result.content, ":!1}", "expected request service tier helper not to block custom API users at the request layer");
   assertContains(serviceTierRequestAllowance26623Result.patchedLabels.join("\n"), "Speed service tier request allowance", "expected request service tier allowance patch to report its target");
 

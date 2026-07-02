@@ -40,6 +40,12 @@ If a Fast conversation falls back to Standard after stopping, editing, and resen
 2. Confirm `serviceTierForRequest` preserves explicit non-standard `latestThreadSettings.serviceTier` values, but does not let Standard/null conversation state or latest-turn `params.serviceTier` override the configured Settings tier.
 3. Confirm send/edit/resume paths that compute `serviceTier` through the request helper do not block non-ChatGPT auth methods with the original `fast_mode`-only gate, especially after changing reasoning effort before resending.
 
+If Fast writes `service_tier = "priority"` to `config.toml` but the UI still looks unselected:
+
+1. Check whether the config uses only a custom `model_provider` such as `model_provider = "sky_router"` without a Codex account/API-key account entry.
+2. In that shape, the app's account `authMethod` can be `null` even though the custom provider is valid, so Fast must not be gated on `authMethod != null`.
+3. Inspect both the shared service-tier allowance hook and the helper near `Failed to read service tier for request`; preserving the official ChatGPT `fast_mode` check is correct, but the non-ChatGPT branch must allow custom provider configs with null auth state.
+
 If `Disable automatic updates` is enabled but Codex still updates:
 
 1. Confirm `~/.codex/config.toml` contains `[desktop].disableAutomaticUpdates = true` or a supported legacy top-level value.
