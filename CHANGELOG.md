@@ -6,6 +6,8 @@ This project follows a simple release-oriented changelog format.
 
 ## [Unreleased]
 
+## [0.47.0] - 2026-07-03
+
 ### Changed
 
 - Runtime launch output now includes the current `codexfast` package version in the action header.
