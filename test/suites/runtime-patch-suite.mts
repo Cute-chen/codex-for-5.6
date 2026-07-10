@@ -504,8 +504,8 @@ export function runRuntimePatchSuite(): void {
   );
   assertContains(
     serviceTierConversationFallback26707Result.content,
-    "k=e!=null&&u?.serviceTier!=null&&u.serviceTier!==`standard`&&u.serviceTier!==`default`?u.serviceTier:O",
-    "expected 26.707 fallback to ignore current default and legacy standard conversation tiers while preserving explicit Fast",
+    "k=O;S=Iee(s,k,y)",
+    "expected 26.707 fallback to use the configured base tier as the only source for existing conversations",
   );
   const requestTierExpression26707 =
     serviceTierConversationFallback26707Result.content.match(/k=([^;]+);S=Iee/)?.[1];
@@ -513,6 +513,12 @@ export function runRuntimePatchSuite(): void {
     fail(
       "expected to extract the 26.707 request-tier expression from the patched service-tier fallback",
       serviceTierConversationFallback26707Result.content,
+    );
+  }
+  if (requestTierExpression26707 !== "O") {
+    fail(
+      "expected the 26.707 request-tier expression to ignore conversation and latest-turn tier state",
+      requestTierExpression26707,
     );
   }
   const resolveConversationTier26707 = new Function(
@@ -526,22 +532,28 @@ export function runRuntimePatchSuite(): void {
     configuredTier: string | null,
   ) => string | null;
   if (
+    resolveConversationTier26707("conversation", { serviceTier: "priority" }, "default") !==
+    "default"
+  ) {
+    fail("expected configured Standard to override stale conversation Fast");
+  }
+  if (
     resolveConversationTier26707("conversation", { serviceTier: "default" }, "priority") !==
     "priority"
   ) {
-    fail("expected stale default conversation tier to fall back to configured Fast");
+    fail("expected configured Fast to override stale conversation Standard");
   }
   if (
     resolveConversationTier26707("conversation", { serviceTier: "standard" }, "priority") !==
     "priority"
   ) {
-    fail("expected legacy standard conversation tier to fall back to configured Fast");
+    fail("expected configured Fast to override legacy conversation Standard");
   }
   if (
-    resolveConversationTier26707("conversation", { serviceTier: "priority" }, "default") !==
+    resolveConversationTier26707("conversation", { serviceTier: "priority" }, "priority") !==
     "priority"
   ) {
-    fail("expected explicit non-Standard next-turn Fast to remain selected");
+    fail("expected configured Fast to remain Fast when conversation state matches");
   }
   assertContains(
     serviceTierConversationFallback26707Result.content,

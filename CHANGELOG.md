@@ -8,7 +8,7 @@ This project follows a simple release-oriented changelog format.
 
 ### Fixed
 
-- Fixed Fast falling back to Standard for only some reopened `26.707` conversations by treating the current `default` and legacy `standard` conversation-tier values as fallback state instead of overrides of configured Fast.
+- Fixed Fast/Standard state drifting across reopened `26.707` conversations by making the configured global service tier authoritative and ignoring stored conversation-level and latest-turn tier values in both directions.
 
 ## [0.49.0] - 2026-07-10
 
