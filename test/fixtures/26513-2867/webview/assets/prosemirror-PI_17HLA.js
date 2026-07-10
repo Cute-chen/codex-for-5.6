@@ -1,1 +1,0 @@
-const pluginsLoading={id:`composer.atMentionList.pluginsLoading`};function loadPluginMentions(){let s=N(`1269116100`),c;t[0]===s?c=t[1]:(c={additionalMarketplaceKinds:s?[`shared-with-me`]:[]},t[0]=s,t[1]=c);return[pluginsLoading,c]}

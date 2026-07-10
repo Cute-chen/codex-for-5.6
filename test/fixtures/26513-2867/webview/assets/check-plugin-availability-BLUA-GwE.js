@@ -1,1 +1,0 @@
-const connectorUnavailableMessage=`connector-unavailable`;function checkPluginAvailability(){let j=_.length>0&&O===_.length?D?`disabled-by-admin`:`connector-unavailable`:null,M;return[connectorUnavailableMessage,j,M]}

@@ -152,25 +152,37 @@ Codex / ChatGPT 桌面端的原始 `model/list` 结果可能已经包含 GPT-5.6
 - 使用第三方 API Provider 前，请确认其凭据处理和隐私政策可信。
 - 本项目不是 OpenAI 官方产品，与 OpenAI 无隶属或背书关系。
 
-## 从源码运行
+## 仓库内容
 
-仓库保留了 `codexfast` 的 TypeScript 源码和单文件构建产物。以下源码流程目前面向 macOS；Windows 实验性适配通过 Release 中的定制运行时文件提供。
+仓库只保留构建和检查当前发布版所需的内容，已移除上游 fork 中与发行无关的 `.agents`、开发规范、测试 fixture、历史适配笔记和 TypeScript 工程脚手架。
 
-高级用户可以在 macOS 上从源码运行：
+| 目录 | 用途 |
+| --- | --- |
+| [macos](./macos) | 双击启动器、终端交互界面、菜单栏 helper Objective-C 源码、App plist 与图标 |
+| [runtime/macos](./runtime/macos) | macOS 发布包实际使用的 Node.js 运行时快照 |
+| [runtime/windows](./runtime/windows) | Windows 发布包实际使用的 Node.js 运行时快照 |
+| [windows](./windows) | Windows UAC 启动器 |
+| [scripts](./scripts) | 重建 macOS App/ZIP 和 Windows ZIP 的打包脚本 |
+
+`runtime` 下的两个单文件脚本是对应 Release 中实际执行的、可审查的 JavaScript 运行时快照。它们来自基于 `Veath/codexfast` 的已验证构建，并包含两端不同的 App 路径发现、进程管理和 CDP 适配；不要直接用 macOS 文件覆盖 Windows 文件，或反过来覆盖。
+
+## 从仓库打包
+
+macOS 需要 Node.js 18.12+、Xcode Command Line Tools 和 macOS 自带的 `codesign`、`ditto`。在仓库根目录运行：
 
 ```bash
-pnpm install
-pnpm build
-./bin/codexfast launch
+zsh scripts/package-macos.zsh
 ```
 
-开发和验证：
+产物为 `dist/Mac-ACM.For.Codex.5.6.zip`。脚本会从 `macos/`、`runtime/macos/` 生成 App、编译菜单栏 helper，并使用 ad-hoc 签名。
 
-```bash
-pnpm build:check
-pnpm typecheck
-pnpm test
+Windows 10/11 上，使用 PowerShell 生成 ZIP：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\package-windows.ps1
 ```
+
+`dist/` 已被 Git 忽略，因此本地打包产物不会被提交。
 
 ## 开源致谢
 
@@ -187,4 +199,4 @@ pnpm test
 
 ## License
 
-核心项目使用 MIT License，详见 [LICENSE](./LICENSE)。打包版本中保留了上游开源声明和许可证。
+核心项目使用 MIT License，详见 [LICENSE](./LICENSE) 和 [NOTICE.md](./NOTICE.md)。打包版本中保留了上游开源声明和许可证。

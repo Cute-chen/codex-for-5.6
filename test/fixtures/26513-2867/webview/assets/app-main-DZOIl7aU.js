@@ -1,1 +1,0 @@
-const disabledPluginsTooltip={id:`sidebarElectron.pluginsDisabledTooltip`};function renderSidebar(){let{authMethod:c}=Gc(),l=ec(`533078438`),u=Xl(c),d=e&&l&&u,f=Nl({hostId:Qo}),p=e&&f&&!u;return[disabledPluginsTooltip,d,p]}
