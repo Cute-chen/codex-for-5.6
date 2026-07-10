@@ -1,95 +1,176 @@
-# codexfast - runtime patches for OpenAI Codex.app
+# AICodeMirror Codex 5.6 模型列表插件
 
-[中文说明](./README.zh-CN.md)
+由 **AICodeMirror 团队**制作和打包，基于开源项目 [Veath/codexfast](https://github.com/Veath/codexfast)。
 
-**A macOS runtime launcher for OpenAI `Codex.app` that re-enables hidden custom API features on verified compatible builds without modifying the installed app bundle.**
+本工具通过运行时 CDP 注入修改 Codex / ChatGPT 桌面端的前端模型列表和动态白名单过滤，使 GPT-5.6 系列模型能够显示在模型下拉菜单中。它不会永久修改原始 App，也不会修改账号或 API 的模型权限。
 
-`codexfast` launches Codex with temporary runtime patches for the current session. It keeps the original `app.asar`, `Info.plist`, app bundle, and app signature untouched.
+[![Release](https://img.shields.io/github/v/release/Cute-chen/codex-for-5.6?label=Release)](https://github.com/Cute-chen/codex-for-5.6/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Cute-chen/codex-for-5.6/total?label=Downloads)](https://github.com/Cute-chen/codex-for-5.6/releases)
+[![License](https://img.shields.io/github/license/Cute-chen/codex-for-5.6)](./LICENSE)
 
-- **Fast settings** control in Settings
-- **Composer `/fast`** slash command
-- **Speed submenu** in the composer
-- **GPT-5.5 and GPT-5.6 model catalog** metadata for custom API users, including Sol, Terra, and Luna on the latest supported build
-- **Disable automatic updates** switch in Settings > General
+## 下载
 
-```bash
-npx codexfast launch
+| 平台 | 状态 | 下载 |
+| --- | --- | --- |
+| macOS Apple Silicon | 已验证 | [Mac-ACM.For.Codex.5.6.zip](https://github.com/Cute-chen/codex-for-5.6/releases/latest/download/Mac-ACM.For.Codex.5.6.zip) |
+| Windows | 实验性支持 | [Win-ACM.For.Codex.5.6.zip](https://github.com/Cute-chen/codex-for-5.6/releases/latest/download/Win-ACM.For.Codex.5.6.zip) |
+| SHA-256 | 校验文件 | [SHA256SUMS.txt](https://github.com/Cute-chen/codex-for-5.6/releases/latest/download/SHA256SUMS.txt) |
+
+完整更新说明：[Releases](https://github.com/Cute-chen/codex-for-5.6/releases)
+
+## 主要功能
+
+- 在模型下拉菜单中显示 `GPT-5.6 Sol`
+- 在模型下拉菜单中显示 `GPT-5.6 Terra`
+- 在模型下拉菜单中显示 `GPT-5.6 Luna`
+- 补充动态 `availableModels` 白名单，避免模型被前端二次过滤
+- 为 Sol 和 Terra 提供 `Max`、`Ultra` 推理选项
+- 为 Luna 提供 `Max` 推理选项
+- 使用运行时内存注入，不修改原始 `app.asar`
+- macOS 版本提供终端交互界面和菜单栏运行状态
+- macOS 菜单栏支持查看日志、关闭注入并退出 Codex
+- Windows 版本支持常规安装和 Microsoft Store / MSIX 安装路径发现
+
+## macOS 使用方法
+
+### 环境要求
+
+- macOS 12 或更高版本
+- Apple Silicon (`arm64`)
+- Node.js 18.12 或更高版本
+- 已安装 ChatGPT / Codex App
+
+当前打包版已验证：
+
+- ChatGPT / Codex App `26.707.31428`
+- build `5059`
+
+### 启动步骤
+
+1. 下载并解压 `Mac-ACM.For.Codex.5.6.zip`。
+2. 完全退出正在运行的 ChatGPT / Codex App。
+3. 双击 `ACM For Codex 5.6模型插件.app`。
+4. 在终端菜单中选择：
+
+```text
+1、开始注入 5.6 模型列表插件
+2、退出
 ```
 
-Verified for `ChatGPT.app` / `Codex.app` `26.707.31428` (`build 5059`), `26.623.141536` (`build 4753`), `26.623.101652` (`build 4674`), `26.623.81905` (`build 4598`), `26.623.70822` (`build 4559`), `26.623.61825` (`build 4548`), `26.623.42026` (`build 4514`), `26.623.31921` (`build 4452`), `26.623.31443` (`build 4441`), `26.616.81150` (`build 4306`), `26.616.71553` (`build 4265`), `26.616.51431` (`build 4212`), `26.616.31447` (`build 4133`), `26.611.62324` (`build 4028`), `26.611.61753` (`build 4008`), `26.611.61049` (`build 3996`), `26.609.71450` (`build 3965`), `26.609.41114` (`build 3888`), `26.609.30741` (`build 3808`), `26.608.12217` (`build 3722`), `26.602.71036` (`build 3685`), `26.602.40724` (`build 3593`), `26.602.30954` (`build 3575`), `26.601.21317` (`build 3511`), `26.527.60818` (`build 3437`), `26.527.31326` (`build 3390`), `26.519.81530` (`build 3178`), `26.519.41501` (`build 3044`), `26.519.31651` (`build 3017`), `26.519.22136` (`build 3003`), `26.513.31313` (`build 2867`), `26.513.20950` (`build 2816`), `26.506.31421` (`build 2620`), `26.506.21252` (`build 2575`), `26.429.61741` (`build 2429`), `26.429.30905` (`build 2345`), `26.429.20946` (`build 2312`), `26.422.71525` (`build 2210`), `26.422.62136` (`builds 2180, 2176`), `26.422.30944` (`build 2080`), `26.422.21637` (`build 2056`), `26.417.41555` (`build 1858`), and `26.415.40636` (`build 1799`). Feature scope: [`docs/feature-scope.md`](./docs/feature-scope.md).
+5. 如果检测到 Codex 正在运行，可以选择自动关闭并重新启动。
+6. 注入成功后会显示：
 
-## How It Works
-
-`Codex.app` already contains the Fast, `/fast`, Speed, and updater UI paths in its packaged frontend bundle. `codexfast` patches only the local gates still needed for a verified build. It does not add a backend service or call a private OpenAI API.
-
-`codexfast launch` starts Codex with a local Chrome DevTools Protocol endpoint, attaches through the browser-level CDP target before renderer JavaScript runs, intercepts matching renderer JavaScript responses for that launched session, and applies narrow patch rules in memory. Keep the `codexfast launch` process running while you use Codex; Settings and patched feature chunks can load lazily, so the runtime interceptor must stay attached after the first window appears.
-
-The Settings > General `Disable automatic updates` switch is stored in Codex desktop configuration as `[desktop].disableAutomaticUpdates`. `codexfast` injects a process-local main-process hook that reads the latest configuration before each Sparkle background update check and automatic forced install scheduling pass, so enabling the switch during a `codexfast launch` session suppresses later automatic update activity in that same session. Manual `Check for Updates` and update install actions remain available, and the injected Settings row uses locale-aware copy for common Codex app locales.
-
-The launcher sends a lightweight browser-level CDP heartbeat, tries up to three bounded reconnects if the runtime patch session drops, and reports `Runtime patch session lost` instead of silently continuing unpatched. If reconnects are exhausted, `codexfast` closes the launched Codex process and exits non-zero so the session cannot keep running without runtime patching. If the launch process itself is killed externally, fully quit Codex and relaunch with `codexfast` before relying on patched lazy-loaded features.
-
-If an older codexfast version installed the launchd auto-repair watcher, `launch` removes that legacy watcher before starting Codex.
-
-## Usage
-
-macOS only. Requires `Codex.app` or `ChatGPT.app` at `/Applications` and Node.js `>=18.12.0`.
-
-Recommended runtime launch:
-
-```bash
-npx codexfast launch
+```text
+Codex 显示5.6系列模型已注入成功，请享用
 ```
 
-Or from a clone of this repo:
+7. 提示显示 3 秒后终端自动关闭，菜单栏显示 `5.6 ✓`。
+
+运行期间不需要保留 Terminal 窗口。菜单栏 helper 会在后台维持注入连接。
+
+### 菜单栏操作
+
+点击菜单栏中的 `5.6 ✓`：
+
+- `查看运行日志`
+- `关闭注入并退出 Codex`
+
+关闭菜单栏 helper 会终止运行时注入。再次使用时请重新双击启动器。
+
+## Windows 使用方法
+
+Windows 版本目前属于实验性支持。
+
+### 环境要求
+
+- Windows 10 / 11
+- Node.js 18.12 或更高版本
+- 已安装 ChatGPT / Codex App
+
+### 启动步骤
+
+1. 下载并完整解压 `Win-ACM.For.Codex.5.6.zip`。
+2. 右键运行 `右键-以管理员方式运行.cmd`。
+3. 如果未手动选择管理员权限，脚本也会自动请求 UAC 提权。
+4. 启动器会查找 ChatGPT / Codex 的常规安装目录和 Microsoft Store / MSIX 安装。
+5. 保持启动器进程运行，以维持当前 Codex 会话的注入。
+
+Windows 运行时已经包含平台专用的进程检测、App 路径发现、MSIX 激活、重启和 CDP 注入逻辑，内部运行时自检已通过。但当前发布未在真实 Windows Codex 环境完成完整端到端验证，实际兼容性取决于已安装 App 的前端代码签名。
+
+## 工作原理
+
+Codex / ChatGPT 桌面端的原始 `model/list` 结果可能已经包含 GPT-5.6，但前端还会使用远程动态配置中的 `use_hidden_models` 和 `available_models` 白名单再次过滤。
+
+本工具会在应用启动时：
+
+1. 使用本地 Chrome DevTools Protocol 端口启动 Codex / ChatGPT。
+2. 在 renderer JavaScript 执行前拦截匹配的 `app://` JavaScript 响应。
+3. 包装前端的 `model/list` 处理函数，添加或规范化 GPT-5.6 模型元数据。
+4. 将 Sol、Terra 和 Luna 加入下游 `availableModels` 白名单。
+5. 将修改后的 JavaScript 仅返回给当前运行会话。
+
+原始 App 文件不会被永久改写：
+
+- 不修改 `app.asar`
+- 不修改原始 `Info.plist`
+- 不重新签名原始 ChatGPT / Codex App
+- 不安装系统级常驻补丁
+
+## 兼容性说明
+
+该工具依赖 Codex / ChatGPT 前端构建产物中的代码特征。App 更新后，如果相关 JavaScript 结构发生变化，注入可能失效，需要重新适配。
+
+出现以下情况时，请查看最新 Release 或提交 Issue：
+
+- 注入提示找不到目标代码
+- Codex 更新后模型菜单再次隐藏 5.6
+- 菜单栏显示 `5.6 !`
+- Windows 版本无法找到已安装的 App
+- CDP 连接或运行时补丁会话意外断开
+
+问题反馈：[GitHub Issues](https://github.com/Cute-chen/codex-for-5.6/issues)
+
+## 重要说明
+
+- 本工具只修改前端模型菜单，不会解锁服务端模型权限。
+- 自定义 API Provider 必须实际接受 `gpt-5.6-sol`、`gpt-5.6-terra` 或 `gpt-5.6-luna`。
+- 如果 Provider 返回 `model_not_found`、`unsupported_model` 或权限错误，本工具无法绕过该服务端限制。
+- 使用第三方 API Provider 前，请确认其凭据处理和隐私政策可信。
+- 本项目不是 OpenAI 官方产品，与 OpenAI 无隶属或背书关系。
+
+## 从源码运行
+
+仓库保留了 `codexfast` 的 TypeScript 源码和单文件构建产物。以下源码流程目前面向 macOS；Windows 实验性适配通过 Release 中的定制运行时文件提供。
+
+高级用户可以在 macOS 上从源码运行：
 
 ```bash
+pnpm install
+pnpm build
 ./bin/codexfast launch
 ```
 
-Print help or the installed package version:
+开发和验证：
 
 ```bash
-npx codexfast help
-npx codexfast version
+pnpm build:check
+pnpm typecheck
+pnpm test
 ```
 
-The interactive menu exposes the same launch path:
+## 开源致谢
 
-```text
-1) Launch Codex with runtime patches
-q) Quit
-```
+感谢 [Veath/codexfast](https://github.com/Veath/codexfast) 提供核心运行时补丁机制和版本适配工作。
 
-### Command Reference
+本 fork 增加和维护：
 
-| Command | Purpose |
-| --- | --- |
-| `npx codexfast launch` | Launch Codex with runtime patches for the current foreground session. Keep this command running while you use Codex. |
-| `npx codexfast help` | Show help. |
-| `npx codexfast version` | Print the codexfast version. |
-
-## Compatibility
-
-The script matches code signatures in frontend build output, so it can break after a Codex update.
-
-- `launch` is blocked unless the installed version/build is whitelisted
-- Runtime launch does not rewrite `app.asar`, `Info.plist`, the app bundle, backups, the app signature, or macOS privacy permissions
-- The automatic-update switch disables later background update checks and forced automatic install scheduling during the current `codexfast launch` session; manual update checks and installs remain available
-
-## Troubleshooting
-
-**Script fails immediately** - check `/Applications/Codex.app` or `/Applications/ChatGPT.app` exists and `node -v` reports `18.12.0` or later.
-
-**Runtime launch shows `Codex failed to start` / `ERR_FAILED`** - fully quit Codex and rerun the latest `npx codexfast launch`. A failed runtime launch should not modify `app.asar`, `Info.plist`, the app bundle, backups, the app signature, or macOS privacy permissions.
-
-**Settings Fast or a patched feature is still missing after `launch`** - confirm the `codexfast launch` terminal process is still running. Closing it ends CDP interception, so lazy-loaded chunks cannot be patched later in the session.
-
-**Automatic updates still checked once after changing the setting** - the updater can run a startup/background check before the Settings page is opened, and a check that already started cannot be undone. After the switch is enabled, later background checks and forced automatic install scheduling in the same `codexfast launch` session are skipped.
-
-**Runtime patch session lost after reconnect attempts** - codexfast closes the launched Codex process because runtime patching is no longer active. Fully quit any remaining Codex process and rerun `npx codexfast launch` to start a fresh patched session.
-
-**An older auto-repair watcher was installed** - run `npx codexfast launch` once. The launcher removes `~/Library/LaunchAgents/com.codexfast.watcher.plist` and the old local watcher runtime before starting Codex.
+- AICodeMirror 品牌启动界面
+- macOS 双击启动 App
+- macOS 菜单栏 helper
+- macOS / Windows 打包发行文件
+- GPT-5.6 模型列表使用说明
+- Windows 实验性运行时适配发行
 
 ## License
 
-MIT. See [`LICENSE`](./LICENSE).
+核心项目使用 MIT License，详见 [LICENSE](./LICENSE)。打包版本中保留了上游开源声明和许可证。
