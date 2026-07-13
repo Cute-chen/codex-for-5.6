@@ -12,7 +12,7 @@
 
 | 平台 | 状态 | 下载 |
 | --- | --- | --- |
-| macOS Apple Silicon | 已验证 | [Mac-ACM.For.Codex.5.6.zip](https://github.com/Cute-chen/codex-for-5.6/releases/latest/download/Mac-ACM.For.Codex.5.6.zip) |
+| macOS Intel / Apple Silicon | Universal 2 已验证 | [Mac-ACM.For.Codex.5.6.zip](https://github.com/Cute-chen/codex-for-5.6/releases/latest/download/Mac-ACM.For.Codex.5.6.zip) |
 | Windows | 实验性支持 | [Win-ACM.For.Codex.5.6.zip](https://github.com/Cute-chen/codex-for-5.6/releases/latest/download/Win-ACM.For.Codex.5.6.zip) |
 | SHA-256 | 校验文件 | [SHA256SUMS.txt](https://github.com/Cute-chen/codex-for-5.6/releases/latest/download/SHA256SUMS.txt) |
 
@@ -50,14 +50,14 @@
 ### 环境要求
 
 - macOS 12 或更高版本
-- Apple Silicon (`arm64`)
+- Intel (`x86_64`) 或 Apple Silicon (`arm64`)
 - Node.js 18.12 或更高版本
 - 已安装 ChatGPT / Codex App
 
 当前打包版已验证：
 
-- ChatGPT / Codex App `26.707.31428`
-- build `5059`
+- ChatGPT / Codex App `26.707.41301`，build `5103`（真实 App 资源离线注入验证）
+- ChatGPT / Codex App `26.707.31428`，build `5059`（运行验证）
 
 ### 启动步骤
 
@@ -133,6 +133,8 @@ Codex / ChatGPT 桌面端的原始 `model/list` 结果可能已经包含 GPT-5.6
 ## 兼容性说明
 
 该工具依赖 Codex / ChatGPT 前端构建产物中的代码特征。App 更新后，如果相关 JavaScript 结构发生变化，注入可能失效，需要重新适配。
+
+内置版本列表仅作为“已验证版本记录”，不再作为 macOS 启动白名单。未收录的新版本也会尝试运行时注入，并标记为实验性兼容；只有检测到必要的模型列表和选择器代码特征后才会报告注入成功。尝试过程只影响当前内存会话，不会修改原始 App 文件。
 
 出现以下情况时，请查看最新 Release 或提交 Issue：
 

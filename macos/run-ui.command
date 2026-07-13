@@ -90,6 +90,22 @@ function helper_is_running() {
   /bin/kill -0 "$helper_pid" >/dev/null 2>&1
 }
 
+function stop_status_helper() {
+  [[ -s "$PID_FILE" ]] || return 0
+  local helper_pid
+  helper_pid="$(<"$PID_FILE")"
+  if [[ "$helper_pid" == <-> ]] && /bin/kill -0 "$helper_pid" >/dev/null 2>&1; then
+    /bin/kill -TERM "$helper_pid" >/dev/null 2>&1 || true
+    local attempt
+    for attempt in {1..20}; do
+      /bin/kill -0 "$helper_pid" >/dev/null 2>&1 || break
+      sleep 0.1
+    done
+    /bin/kill -KILL "$helper_pid" >/dev/null 2>&1 || true
+  fi
+  /bin/rm -f "$PID_FILE" "$READY_FILE" "$FAILURE_FILE"
+}
+
 clear
 print -P "%F{cyan}============================================%f"
 print -P "%F{cyan}             AICodeMirror Codex 5.6%f"
@@ -117,10 +133,15 @@ esac
 /bin/mkdir -p "$STATE_DIR"
 
 if helper_is_running; then
+  if [[ -f "$READY_FILE" && ! -f "$FAILURE_FILE" ]]; then
+    print ""
+    print -P "%F{green}Codex 显示5.6系列模型已注入成功，请享用%f"
+    sleep 3
+    finish_and_close
+  fi
   print ""
-  print -P "%F{green}Codex 显示5.6系列模型已注入成功，请享用%f"
-  sleep 3
-  finish_and_close
+  print -P "%F{yellow}正在清理上一次失败的菜单栏 helper...%f"
+  stop_status_helper
 fi
 
 /bin/rm -f "$PID_FILE" "$READY_FILE" "$FAILURE_FILE"

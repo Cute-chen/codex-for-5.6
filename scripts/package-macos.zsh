@@ -26,7 +26,9 @@ cp "$REPO_ROOT/NOTICE.md" "$RESOURCES_DIR/OPEN_SOURCE_NOTICES.txt"
 chmod +x "$CONTENTS_DIR/MacOS/launcher" "$RESOURCES_DIR/run-ui.command" "$RESOURCES_DIR/codexfast"
 
 cp "$REPO_ROOT/macos/StatusInfo.plist" "$STATUS_CONTENTS/Info.plist"
-clang -O2 -fobjc-arc -framework Cocoa "$REPO_ROOT/macos/Codex56Status.m" \
+clang -O2 -fobjc-arc -framework Cocoa \
+  -arch arm64 -arch x86_64 -mmacosx-version-min=12.0 \
+  "$REPO_ROOT/macos/Codex56Status.m" \
   -o "$STATUS_CONTENTS/MacOS/Codex56Status"
 
 codesign --force --sign - "$STATUS_APP"
